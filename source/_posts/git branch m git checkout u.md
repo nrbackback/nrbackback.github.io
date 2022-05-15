@@ -56,14 +56,14 @@ SYNOPSIS
 ```shell
 main-test   git push --set-upstream origin  main-test1
 error: src refspec main-test1 does not match any
-error: failed to push some refs to 'https://github.com/nichanglan/blog.git'
+error: failed to push some refs to 'https://github.com/xx/blog.git'
 main-test   git push --set-upstream origin  main-test    1 ↵  6297  17:02:28
 Total 0 (delta 0), reused 0 (delta 0), pack-reused 0
 remote: 
 remote: Create a pull request for 'main-test' on GitHub by visiting:
-remote:      https://github.com/nichanglan/blog/pull/new/main-test
+remote:      https://github.com/xx/blog/pull/new/main-test
 remote: 
-To https://github.com/nichanglan/blog.git
+To https://github.com/xx/blog.git
  * [new branch]      main-test -> main-test
 Branch 'main-test' set up to track remote branch 'main-test' from 'origin'.
 ```
