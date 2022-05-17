@@ -11,5 +11,10 @@ git pull origin master
 git checkout --orphan new
 git add -A
 git commit -m "更新"
-git branch -D dev
+git checkout master           
+git reset --hard new  
+git push -f origin master
+git checkout write-here
+git branch -D master
+git branch -D new
 echo "Finish ............."
