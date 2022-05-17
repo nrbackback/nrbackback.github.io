@@ -1,5 +1,6 @@
 #!
 # 执行这个脚本就自动更新了
+git push
 rm -rf node_modules && npm install --force
 echo "Start ............."
 hexo clean
