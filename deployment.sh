@@ -6,8 +6,10 @@ hexo clean
 hexo generate
 hexo deploy
 hexo g
-git checkout raw
-git reset --hard master
-git push
 git checkout master
+git pull origin master
+git checkout --orphan new
+git add -A
+git commit -m "更新"
+git branch -D dev
 echo "Finish ............."
