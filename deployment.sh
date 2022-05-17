@@ -10,6 +10,10 @@ hexo g
 git checkout master
 git pull origin master
 git checkout --orphan new
+rm -rf .deploy_git
+rm -rf node_modules
+rm -rf public
+rm -rf db.json
 git add -A
 git commit -m "更新"
 git checkout master           
