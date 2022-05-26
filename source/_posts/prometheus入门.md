@@ -1,6 +1,6 @@
 ---
 title: prometheus入门
-date: 2022-5-26 10:00:00
+date: 2022-5-26 17:00:00
 categories:
 - 运维
 ---
