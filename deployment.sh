@@ -1,5 +1,5 @@
 #!
-# 执行这个脚本就自动更新了
+# commit后执行这个脚本就自动更新了
 echo "Start ............."
 git push
 rm -rf node_modules && npm install --force
