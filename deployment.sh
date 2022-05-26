@@ -7,7 +7,9 @@ hexo clean
 hexo generate
 hexo deploy
 hexo g
-git checkout master
+git fetch origin -a
+git checkout remotes/origin/master
+git checkout -b master
 git pull origin master
 git checkout --orphan new
 rm -rf .deploy_git

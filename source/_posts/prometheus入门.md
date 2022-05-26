@@ -1,5 +1,5 @@
 ---
-title: prometheus入门
+title: prometheus入门xx
 date: 2022-5-26 17:00:00
 tags:
 - 原创
