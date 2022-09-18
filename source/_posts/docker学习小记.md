@@ -4,6 +4,8 @@ date: 2022-9-1 16:14:00
 categories:
 - 运维
 ---
+docker学习小记
+
 ## Dockerfile命令解析
 
 ### COPY
@@ -31,16 +33,20 @@ COPY [--chown=<user>:<group>] ["<源路径1>",... "<目标路径>"]
 
 ###CMD
 
+
+
 ### ENTRYPOINT
 
 配置容器启动后执行的命令，并且不可被 docker run 提供的参数覆盖。
+
+
 
 ### 我的使用🌟
 
 使得docker run支持go flag参数，-c=xxx参数也就是程序中的参数，和go run的参数一致。但是在docker run时，-c的路径是容器内的路径，所以如果容器内没有的话，需要挂载，容器内目录必须是绝对路径，宿主机目录不存在时会生成。通过-v挂载，`-v 宿主机路径:容器内路径`
 
 ```shell
-docker run -v /home/ftpuser/fff/config.yml:/usr/src/app/config.yml gg2 -c=/usr/src/app/config.yml
+docker run -v /home/ftpuser/flora-gopacket-service/config.yml:/usr/src/app/config.yml packet-go2 -c=/usr/src/app/config.yml
 ```
 
 好像只有Dockerfile里运行命令的参数写ENTRYPOINT，-c才有效，上面的镜像对应的Dockerfile如下：
@@ -57,14 +63,14 @@ COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 COPY . .
 RUN go build -v -o /usr/local/bin/ ./...
-ENTRYPOINT ["/usr/local/bin/fff"] # 注意这一行
+ENTRYPOINT ["/usr/local/bin/flora-gopacket-service"] # 注意这一行
 ```
 
-基于alpine，可以构建出可以使用的xxx服务，对应的镜像是：
+基于alpine，可以构建出可以使用的gopacket服务，对应的镜像是：
 
 ```shell
- docker images|grep xx                                                                                                                2 ↵  10074  15:50:45
-xx                   alpine-ok   6b9e79fe7834   About a minute ago   31.8MB
+ docker images|grep gopacket                                                                                                                2 ↵  10074  15:50:45
+gopacket                   alpine-ok   6b9e79fe7834   About a minute ago   31.8MB
 ```
 
 这个镜像是我在基于如下Dockerfile的容器的基础上改的：
@@ -76,6 +82,22 @@ WORKDIR /usr/local/bin
 ```
 
 改的操作如下：
+
+> 参考了下[ libpcap.so.0.8相关报错](https://github.com/knownsec/ksubdomain/issues/1)
+>
+> 解答：
+>
+> 我是这样解决的：
+> 先直接yum安装libpcap-devel：
+> yum install libpcap-devel
+> 然后locate一下，发现了安装的是1.5.3版本，定位出/usr/lib64目录下的三个文件：
+> locate libpcap
+> /usr/lib64/libpcap.so
+> /usr/lib64/libpcap.so.1
+> /usr/lib64/libpcap.so.1.5.3
+> 然后cd到/usr/lib64目录下，ls看一下那三个文件，发现libpcap.so和libpcap.so.1都是libpcap.so.1.5.3的软链接文件。
+> 既然这样，那就再建一个软链接文件就好了：
+> ln -s libpcap.so.1.5.3 libpcap.so.0.8
 
 ````shell
 docker run -it zz    127 ↵  10068  15:20:16
@@ -166,7 +188,7 @@ libpcap-1.10.0-r0 license:
 BSD-3-Clause
 
 /usr/local/bin # ls
-unix-xxx-service
+unix-flora-gopacket-service
 /usr/local/bin #  apk info
 musl
 busybox
@@ -186,54 +208,54 @@ libpcap
 pkgconf
 libpcap-dev
 /usr/local/bin # ls
-unix-xxx-service
-/usr/local/bin # ./unix-xxx-service 
-Error loading shared library libpcap.so.0.8: No such file or directory (needed by ./unix-xxx-service)
-Error relocating ./unix-xxx-service: pcap_list_tstamp_types: symbol not found
-Error relocating ./unix-xxx-service: pcap_set_promisc: symbol not found
-Error relocating ./unix-xxx-service: pcap_tstamp_type_name_to_val: symbol not found
-Error relocating ./unix-xxx-service: pcap_findalldevs: symbol not found
-Error relocating ./unix-xxx-service: pcap_sendpacket: symbol not found
-Error relocating ./unix-xxx-service: pcap_close: symbol not found
-Error relocating ./unix-xxx-service: pcap_set_tstamp_precision: symbol not found
-Error relocating ./unix-xxx-service: pcap_list_datalinks: symbol not found
-Error relocating ./unix-xxx-service: pcap_open_live: symbol not found
-Error relocating ./unix-xxx-service: pcap_setdirection: symbol not found
-Error relocating ./unix-xxx-service: pcap_geterr: symbol not found
-Error relocating ./unix-xxx-service: pcap_fopen_offline_with_tstamp_precision: symbol not found
-Error relocating ./unix-xxx-service: pcap_statustostr: symbol not found
-Error relocating ./unix-xxx-service: pcap_set_buffer_size: symbol not found
-Error relocating ./unix-xxx-service: pcap_compile: symbol not found
-Error relocating ./unix-xxx-service: pcap_get_selectable_fd: symbol not found
-Error relocating ./unix-xxx-service: pcap_next_ex: symbol not found
-Error relocating ./unix-xxx-service: pcap_set_timeout: symbol not found
-Error relocating ./unix-xxx-service: pcap_set_immediate_mode: symbol not found
-Error relocating ./unix-xxx-service: pcap_freealldevs: symbol not found
-Error relocating ./unix-xxx-service: pcap_stats: symbol not found
-Error relocating ./unix-xxx-service: pcap_set_snaplen: symbol not found
-Error relocating ./unix-xxx-service: pcap_lookupnet: symbol not found
-Error relocating ./unix-xxx-service: pcap_set_datalink: symbol not found
-Error relocating ./unix-xxx-service: pcap_free_datalinks: symbol not found
-Error relocating ./unix-xxx-service: pcap_create: symbol not found
-Error relocating ./unix-xxx-service: pcap_tstamp_type_val_to_name: symbol not found
-Error relocating ./unix-xxx-service: pcap_datalink: symbol not found
-Error relocating ./unix-xxx-service: pcap_offline_filter: symbol not found
-Error relocating ./unix-xxx-service: pcap_activate: symbol not found
-Error relocating ./unix-xxx-service: pcap_setfilter: symbol not found
-Error relocating ./unix-xxx-service: pcap_set_tstamp_type: symbol not found
-Error relocating ./unix-xxx-service: pcap_datalink_val_to_name: symbol not found
-Error relocating ./unix-xxx-service: pcap_free_tstamp_types: symbol not found
-Error relocating ./unix-xxx-service: pcap_open_dead: symbol not found
-Error relocating ./unix-xxx-service: pcap_setnonblock: symbol not found
-Error relocating ./unix-xxx-service: pcap_freecode: symbol not found
-Error relocating ./unix-xxx-service: pcap_can_set_rfmon: symbol not found
-Error relocating ./unix-xxx-service: pcap_datalink_name_to_val: symbol not found
-Error relocating ./unix-xxx-service: pcap_snapshot: symbol not found
-Error relocating ./unix-xxx-service: pcap_datalink_val_to_description: symbol not found
-Error relocating ./unix-xxx-service: pcap_get_tstamp_precision: symbol not found
-Error relocating ./unix-xxx-service: pcap_lib_version: symbol not found
-Error relocating ./unix-xxx-service: pcap_set_rfmon: symbol not found
-Error relocating ./unix-xxx-service: pcap_open_offline_with_tstamp_precision: symbol not found
+unix-flora-gopacket-service
+/usr/local/bin # ./unix-flora-gopacket-service 
+Error loading shared library libpcap.so.0.8: No such file or directory (needed by ./unix-flora-gopacket-service)
+Error relocating ./unix-flora-gopacket-service: pcap_list_tstamp_types: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_set_promisc: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_tstamp_type_name_to_val: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_findalldevs: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_sendpacket: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_close: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_set_tstamp_precision: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_list_datalinks: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_open_live: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_setdirection: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_geterr: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_fopen_offline_with_tstamp_precision: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_statustostr: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_set_buffer_size: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_compile: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_get_selectable_fd: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_next_ex: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_set_timeout: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_set_immediate_mode: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_freealldevs: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_stats: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_set_snaplen: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_lookupnet: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_set_datalink: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_free_datalinks: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_create: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_tstamp_type_val_to_name: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_datalink: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_offline_filter: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_activate: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_setfilter: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_set_tstamp_type: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_datalink_val_to_name: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_free_tstamp_types: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_open_dead: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_setnonblock: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_freecode: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_can_set_rfmon: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_datalink_name_to_val: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_snapshot: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_datalink_val_to_description: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_get_tstamp_precision: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_lib_version: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_set_rfmon: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_open_offline_with_tstamp_precision: symbol not found
 /usr/local/bin # locate
 /bin/sh: locate: not found
 /usr/local/bin # apk add locate
@@ -301,54 +323,54 @@ ln: libpcap.so.0.8: File exists
 bin      include  lib      local    sbin     share
 /usr # cd /usr/local/bin
 /usr/local/bin # ls
-unix-xxx-service
-/usr/local/bin # ./unix-xxx-service 
-Error loading shared library libpcap.so.0.8: Exec format error (needed by ./unix-xxx-service)
-Error relocating ./unix-xxx-service: pcap_list_tstamp_types: symbol not found
-Error relocating ./unix-xxx-service: pcap_set_promisc: symbol not found
-Error relocating ./unix-xxx-service: pcap_tstamp_type_name_to_val: symbol not found
-Error relocating ./unix-xxx-service: pcap_findalldevs: symbol not found
-Error relocating ./unix-xxx-service: pcap_sendpacket: symbol not found
-Error relocating ./unix-xxx-service: pcap_close: symbol not found
-Error relocating ./unix-xxx-service: pcap_set_tstamp_precision: symbol not found
-Error relocating ./unix-xxx-service: pcap_list_datalinks: symbol not found
-Error relocating ./unix-xxx-service: pcap_open_live: symbol not found
-Error relocating ./unix-xxx-service: pcap_setdirection: symbol not found
-Error relocating ./unix-xxx-service: pcap_geterr: symbol not found
-Error relocating ./unix-xxx-service: pcap_fopen_offline_with_tstamp_precision: symbol not found
-Error relocating ./unix-xxx-service: pcap_statustostr: symbol not found
-Error relocating ./unix-xxx-service: pcap_set_buffer_size: symbol not found
-Error relocating ./unix-xxx-service: pcap_compile: symbol not found
-Error relocating ./unix-xxx-service: pcap_get_selectable_fd: symbol not found
-Error relocating ./unix-xxx-service: pcap_next_ex: symbol not found
-Error relocating ./unix-xxx-service: pcap_set_timeout: symbol not found
-Error relocating ./unix-xxx-service: pcap_set_immediate_mode: symbol not found
-Error relocating ./unix-xxx-service: pcap_freealldevs: symbol not found
-Error relocating ./unix-xxx-service: pcap_stats: symbol not found
-Error relocating ./unix-xxx-service: pcap_set_snaplen: symbol not found
-Error relocating ./unix-xxx-service: pcap_lookupnet: symbol not found
-Error relocating ./unix-xxx-service: pcap_set_datalink: symbol not found
-Error relocating ./unix-xxx-service: pcap_free_datalinks: symbol not found
-Error relocating ./unix-xxx-service: pcap_create: symbol not found
-Error relocating ./unix-xxx-service: pcap_tstamp_type_val_to_name: symbol not found
-Error relocating ./unix-xxx-service: pcap_datalink: symbol not found
-Error relocating ./unix-xxx-service: pcap_offline_filter: symbol not found
-Error relocating ./unix-xxx-service: pcap_activate: symbol not found
-Error relocating ./unix-xxx-service: pcap_setfilter: symbol not found
-Error relocating ./unix-xxx-service: pcap_set_tstamp_type: symbol not found
-Error relocating ./unix-xxx-service: pcap_datalink_val_to_name: symbol not found
-Error relocating ./unix-xxx-service: pcap_free_tstamp_types: symbol not found
-Error relocating ./unix-xxx-service: pcap_open_dead: symbol not found
-Error relocating ./unix-xxx-service: pcap_setnonblock: symbol not found
-Error relocating ./unix-xxx-service: pcap_freecode: symbol not found
-Error relocating ./unix-xxx-service: pcap_can_set_rfmon: symbol not found
-Error relocating ./unix-xxx-service: pcap_datalink_name_to_val: symbol not found
-Error relocating ./unix-xxx-service: pcap_snapshot: symbol not found
-Error relocating ./unix-xxx-service: pcap_datalink_val_to_description: symbol not found
-Error relocating ./unix-xxx-service: pcap_get_tstamp_precision: symbol not found
-Error relocating ./unix-xxx-service: pcap_lib_version: symbol not found
-Error relocating ./unix-xxx-service: pcap_set_rfmon: symbol not found
-Error relocating ./unix-xxx-service: pcap_open_offline_with_tstamp_precision: symbol not found
+unix-flora-gopacket-service
+/usr/local/bin # ./unix-flora-gopacket-service 
+Error loading shared library libpcap.so.0.8: Exec format error (needed by ./unix-flora-gopacket-service)
+Error relocating ./unix-flora-gopacket-service: pcap_list_tstamp_types: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_set_promisc: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_tstamp_type_name_to_val: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_findalldevs: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_sendpacket: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_close: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_set_tstamp_precision: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_list_datalinks: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_open_live: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_setdirection: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_geterr: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_fopen_offline_with_tstamp_precision: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_statustostr: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_set_buffer_size: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_compile: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_get_selectable_fd: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_next_ex: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_set_timeout: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_set_immediate_mode: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_freealldevs: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_stats: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_set_snaplen: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_lookupnet: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_set_datalink: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_free_datalinks: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_create: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_tstamp_type_val_to_name: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_datalink: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_offline_filter: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_activate: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_setfilter: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_set_tstamp_type: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_datalink_val_to_name: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_free_tstamp_types: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_open_dead: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_setnonblock: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_freecode: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_can_set_rfmon: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_datalink_name_to_val: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_snapshot: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_datalink_val_to_description: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_get_tstamp_precision: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_lib_version: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_set_rfmon: symbol not found
+Error relocating ./unix-flora-gopacket-service: pcap_open_offline_with_tstamp_precision: symbol not found
 /usr/local/bin # cd /usr/lib/
 /usr/lib # ls
 engines-1.1          libpcap.so           libpcap.so.1.10.0    libssl.so.1.1        modules-load.d
@@ -387,7 +409,7 @@ ln: libpcap.so.0.8: File exists
 /usr/lib # rm libpcap.so.0.8
 /usr/lib # ln -s libpcap.so.1.10.0 libpcap.so.0.8
 /usr/lib # cd /usr/local/bin
-/usr/local/bin # ./unix-xxx-service
+/usr/local/bin # ./unix-flora-gopacket-service 
 panic: load config file error: open config.yml: no such file or directory
 
 goroutine 1 [running]:
@@ -408,16 +430,16 @@ WORKDIR /usr/lib
 RUN ln -s libpcap.so.1.7.4 libpcap.so.0.8
 
 WORKDIR /usr/local/bin
-COPY xxx-service .
+COPY flora-gopacket-service .
 
 WORKDIR /usr/local/app
 
-ENTRYPOINT ["xxx-service"]
+ENTRYPOINT ["flora-gopacket-service"]
 ```
 
-那么这个flora-gopacket-service从哪里来呢？可以把项目复制到虚拟机上，然后执行go build，build出来了xxx-service，然后docker build -t xxx .即完成。
+那么这个flora-gopacket-service从哪里来呢？可以把项目复制到虚拟机上，然后执行go build，build出来了flora-gopacket-service，然后docker build -t xxx .即完成。
 
-或者可以在项目下用下面的Dockerfile构建出镜像，再从容器里把xxx-service复制出来
+或者可以在项目下用下面的Dockerfile构建出镜像，再从容器里把flora-gopacket-service复制出来
 
 ```shell
 FROM golang:1.18
@@ -439,10 +461,10 @@ RUN go mod download && go mod verify
 COPY . .
 RUN go build -v -o /usr/local/bin/ ./...
 
-CMD ["xxx-service"]
+CMD ["flora-gopacket-service"]
 ```
 
-基于这个镜像的可用 `docker run`命令，注意要使用$PWD，使用./xxx或者直接xxx都不行，还有使用了host网络模式：
+基于这个镜像的可用`docker run`命令，注意要使用$PWD，使用./xxx或者直接xxx都不行，还有使用了host网络模式：
 
 ```shell
 docker run -d --net=host -v $PWD/config/config.yml:/usr/local/app/config.yml -v $PWD/logs:/usr/local/app/logs  -v $PWD/pcap_file:/usr/local/app/pcap_file last0 -c=/usr/local/app/config.yml
@@ -466,10 +488,12 @@ cat /proc/version
 
 golang条件编译
 
+
+
 ## go build使用
 
 ```shell
-GOOS=linux GOARCH=amd64 go build      
+GOOS=linux GOARCH=amd64 go build        
 # github.com/google/gopacket/pcap
 ../../../../go/pkg/mod/github.com/google/gopacket@v1.1.19/pcap/pcap.go:30:22: undefined: pcapErrorNotActivated
 ../../../../go/pkg/mod/github.com/google/gopacket@v1.1.19/pcap/pcap.go:52:17: undefined: pcapTPtr
@@ -501,7 +525,7 @@ linux_syscall.c:73:13: note: did you mean 'setreuid'?
 
 ## 我的小记🌟
 
-启动docker `sudo systemctl start docker`
+启动docker`sudo systemctl start docker`
 
 docker-compose重启
 
@@ -512,3 +536,4 @@ docker-compose重启
 docker run -net=host指定网络模式为host只在linux上生效，[原文](https://stackoverflow.com/questions/52555007/docker-mac-alternative-to-net-host)
 
 > The host networking driver only works on Linux hosts, and is not supported on Docker for Mac, Docker for Windows, or Docker EE for Windows Server.
+
