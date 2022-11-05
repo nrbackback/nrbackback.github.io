@@ -1,5 +1,6 @@
 #!
 # commit后执行这个脚本就自动更新了
+# githhub上的博客需要同步到笔记（优先）或者本地。不要提交敏感内容
 echo "Start ............."
 git push
 rm -rf node_modules && npm install --force
