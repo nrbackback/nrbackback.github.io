@@ -2,7 +2,7 @@
 title: clickhouse查询语法
 date: 2022-11-25 11:04:00
 categories:
-- 运维
+- 数据库
 ---
 ## group by ID
 
@@ -162,8 +162,6 @@ SELECT arraySort((x, y)-> y,['hello','world'],[2,1]);
 **toTypeName(x)可以获得数据类型**
 
 `SELECT toTypeName(arrayMap((x, y) -> (x, y), [1, 2, 3], [4, 5, 6]))`
-
-
 
 参考
 
