@@ -1,6 +1,6 @@
 ---
 title: tcp的flag标识
-date: 202-2-13 20:33:00
+date: 2023-2-13 20:33:00
 categories:
 - 计算机网络
 ---
@@ -90,7 +90,7 @@ ACK = 1
 
 没有URG的包，根据chatgpt的回答，增加了以下这些URG的情况：
 
-> 来自chatgpt 
+> 来自chatgpt
 >
 > 根据TCP协议的标准（RFC 793），所有合法的TCP标志组合如下：
 >
@@ -129,21 +129,14 @@ Prior to acknowledging the receipt of the packet, the receiver sets the ECE flag
 [参考](https://www.geeksforgeeks.org/working-of-explicit-congestion-notification/)（这个讲得很好）这个讲了TCP拥塞控制的整个过程是什么样子的。
 
 0. ECN协商
-
 1. 现在发件人正在向另一方发送数据包。 它将在 IP 标头中设置 ECT 以通知路由器发送方和接收方都启用了 ECN，并且他们已经相互通话。
-
 2. 路由器检测到了当前网络遇到了拥塞，当数据包到达路由器时，检测到数据包的IP头部有ECT，路由设置EC。CE 表明路由器正在经历拥塞。 CE 从路由器发送到接收方。这个过程中标头的变化是ECT [0 1] -> CE [1 1]
-
 3. 接收方看到 IP 报头中的 CE 标记，就知道路由器拥塞了。 现在接收方有责任通知发送方拥塞。接收方标记TCP的ECE标头。
 
    当 SYN/ACK 位打开时，ECE 位表示 ECN 协商（也就是步骤0），而不是拥塞。 但是现在，ACK 数据包中的 ECE 位处于打开状态，因此发送方知道路由器拥塞。
-
 4. 发送方收到了ECE标志后，发送方将其拥塞窗口减少一半。
-
 5. 发送方在TCP头中设置CWR，在IP头中设置ECT，告诉接收方自己已经减小了拥塞窗口为了避免拥塞。
-
-6. 当数据包到达路由器时，如果路由器感到拥塞，它可以将 ECT 推销给 CE。 
-
+6. 当数据包到达路由器时，如果路由器感到拥塞，它可以将 ECT 推销给 CE。
 7. 当数据包到达接收方时，因为这个数据包有CWR标识，接收方检测到这个标识后会停止在后续的 ACK 数据包中向发送方发送 ECE 标志。
 
 ### PSH和URG
@@ -157,4 +150,3 @@ URG用来告诉接收方有些数据是紧急的并且应该被优先处理。�
 [![pSoVGsU.png](https://s1.ax1x.com/2023/02/13/pSoVGsU.png)](https://imgse.com/i/pSoVGsU)
 
 这个URG的情况很少出现。
-
