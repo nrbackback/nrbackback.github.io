@@ -150,3 +150,65 @@ URG用来告诉接收方有些数据是紧急的并且应该被优先处理。�
 [![pSoVGsU.png](https://s1.ax1x.com/2023/02/13/pSoVGsU.png)](https://imgse.com/i/pSoVGsU)
 
 这个URG的情况很少出现。
+
+## RFC文档
+
+可以查看[rfc793文档](https://datatracker.ietf.org/doc/html/rfc793)里的各个Figure，获取关于TCP连接状态变更和Flag变更的图。
+
+## 打印某个flag对应所有被设置的位
+
+```go
+func main() {
+	type FlagName struct {
+		Flag int
+		Name string
+	}
+	const (
+		FlagFIN = 1 << iota
+		FlagSYN
+		FlagRST
+		FlagPSH
+		FlagACK
+		FlagURG
+		FlagECE
+		FlagCWR
+	)
+	flagList := []FlagName{
+		{FlagFIN, "FIN"},
+		{FlagSYN, "SYN"},
+		{FlagRST, "RST"},
+		{FlagPSH, "PSH"},
+		{FlagACK, "ACK"},
+		{FlagURG, "URG"},
+		{FlagECE, "ECE"},
+		{FlagCWR, "CWR"},
+	}
+	all := []int{0x014, 0x012, 0x019, 0x099, 0x090, 0x0c2, 0x098, 0x018, 0x010, 0x011, 0x002, 0x052, 0x004}
+	// all := []int{20, 18, 25, 153, 144, 194, 152, 24, 16, 17, 2, 82, 4}
+	for _, i := range all {
+		fmt.Printf("%d:", i)
+		for index := range flagList {
+			last := len(flagList) - 1 - index
+			current := flagList[last]
+			if current.Flag&i != 0 {
+				fmt.Print(current.Name + " ")
+			}
+		}
+		fmt.Println()
+	}
+}
+func IntToByteArray(num int) []byte {
+	size := int(unsafe.Sizeof(num))
+	arr := make([]byte, size)
+	for i := 0; i < size; i++ {
+		byt := *(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&num)) + uintptr(i)))
+		arr[i] = byt
+	}
+	return arr
+}
+```
+
+比如打印wireshark抓到的flags对应的0x010，就可以查看有哪些位被设置了。
+
+[![pSoqqtH.png](https://s1.ax1x.com/2023/02/14/pSoqqtH.png)](https://imgse.com/i/pSoqqtH)
+
