@@ -52,6 +52,8 @@ bewtween a and b的范围是[a,b]
 
 ## 一个复杂查询的示例与解释
 
+### 源语句
+
 这是工作解决某个问题对应的查询语句
 
 ```
@@ -162,6 +164,31 @@ SELECT arraySort((x, y)-> y,['hello','world'],[2,1]);
 **toTypeName(x)可以获得数据类型**
 
 `SELECT toTypeName(arrayMap((x, y) -> (x, y), [1, 2, 3], [4, 5, 6]))`
+
+### 简化
+
+过了很长时间后，在看将clickhouse的书时发现上面的查询语句可以用一种更简单的写法实现：
+
+```go
+ SELECT 
+      toStartOfInterval(create_time, INTERVAL 1 minute) AS ct, 
+      src_ip, 
+      dst_ip, 
+      SUM(pack_size) AS p 
+    FROM 
+      flora.gopacket
+    WHERE 
+        create_time < FROM_UNIXTIME(1676455200) 
+        AND create_time >= FROM_UNIXTIME(1676433600)
+    GROUP BY 
+      src_ip, 
+      dst_ip, 
+      ct
+     ORDER BY ct, p DESC 
+     LIMIT 25 BY ct
+```
+
+这个功能就是相当于在排序完成之后，对于每个ct，取前25个值。因为之前已经ORDER BY p DESC了，所以可以获得前25个值最大的p。
 
 参考
 
