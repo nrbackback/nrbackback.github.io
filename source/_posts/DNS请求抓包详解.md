@@ -5,7 +5,7 @@ categories:
 - 计算机网络
 ---
 
-##Transaction ID
+## Transaction ID
 
 在DNS协议中，每个DNS请求报文都包含一个16位的Transaction ID字段，用于标识该DNS请求和对应的DNS响应。**Transaction ID由客户端随机生成，并且在DNS响应报文中原样返回，以便客户端能够将响应与请求进行匹配**。Transaction ID的生成没有特定的规律，通常是使用伪随机数生成算法来生成。
 
@@ -87,7 +87,7 @@ ID 81中Additional records比Authoritative nameservers多了返回addr，他们�
 
 [![pSzGxZq.png](https://s1.ax1x.com/2023/02/24/pSzGxZq.png)](https://imgse.com/i/pSzGxZq)
 
-##DNS响应时间
+## DNS响应时间
 
 ### 响应和请求相邻时
 
