@@ -1,6 +1,6 @@
 ---
 title: geoip的使用
-date: 2023-2-7 14:00s:00
+date: 2023-2-7 14:00:00
 categories:
 - golang
 ---
