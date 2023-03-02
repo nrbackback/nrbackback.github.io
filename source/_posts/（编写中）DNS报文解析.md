@@ -6,7 +6,7 @@ categories:
 ---
 ## 乱七八糟的整理
 
-![image-20230302163519309](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/themes/fluid/source/img/image-20230302163519309.png)
+![image-20230302163519309](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/img/image-20230302163519309.png)
 
 分割线，下面的是之前的旧写法
 
