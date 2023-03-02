@@ -26,3 +26,4 @@ git checkout write-here
 git branch -D master
 git branch -D new
 echo "Finish ............."
+# hexo n test  新建名为  test 的文章，参考 https://zhuanlan.zhihu.com/p/132823826
