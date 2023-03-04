@@ -26,4 +26,4 @@ git checkout write-here
 git branch -D master
 git branch -D new
 echo "Finish ............."
-# hexo n test  新建名为  test 的文章，参考 https://zhuanlan.zhihu.com/p/132823826
+# hexo n test  新建名为  test 的文章，图片直接粘贴，会存储到同名文件的目录下，博客上上也可以成功显示
