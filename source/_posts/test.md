@@ -13,3 +13,12 @@ tags:
 ..........
 
 ![image-20230304101216720](test/image-20230304101216720.png)
+
+
+
+2
+
+ {%asset_img image-20230304101216720.png examplename%}
+
+
+
