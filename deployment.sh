@@ -1,4 +1,5 @@
 #!
+# 图片直接粘贴，会存储到markdown文件上一级的images目录下，博客上上也可以成功显示
 # commit后执行这个脚本就自动更新了
 # githhub上的博客需要同步到笔记（优先）或者本地。不要提交敏感内容
 echo "Start ............."
@@ -26,4 +27,3 @@ git checkout write-here
 git branch -D master
 git branch -D new
 echo "Finish ............."
-# hexo n test  新建名为  test 的文章，图片直接粘贴，会存储到markdown文件同级别的images目录下，博客上上也可以成功显示
