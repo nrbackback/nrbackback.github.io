@@ -7,7 +7,7 @@ categories:
 
 ## 报文格式
 
-![image-20230303134146545](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303134146545.png)
+![image-20230303134146545](../images/image-20230303134146545.png)
 
 ## 抓包
 
@@ -17,7 +17,7 @@ categories:
 
 我抓包的时候发现了这样的包：
 
-![image-20230302163519309](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230302163519309.png)
+![image-20230302163519309](../images/image-20230302163519309.png)
 
 数据包在DNS之后还有2段数据，查阅资料后得知，这2段数据分别是以太网的Trailer和以太网帧校验序列（FCS）。
 
@@ -26,7 +26,7 @@ categories:
 Authority RRs  权威名称服务器计数：权威名称服务器的数目。
 Additional RRs  附加资源记录数：额外的记录数目（权威名称服务器对应 IP 地址的数目）。
 
-![image-20230303102132074](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303102132074.png)
+![image-20230303102132074](../images/image-20230303102132074.png)
 
 ## 报文字段分析
 
@@ -120,7 +120,7 @@ CS（CSNET类）、CH（CHAOS类）、HS（Hesiod）很少使用
 
 包含了以下这些字段：
 
-![image-20230303134338135](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303134338135.png)
+![image-20230303134338135](../images/image-20230303134338135.png)
 
 **QR**：查询请求时，值为 0；响应时，值为 1。
 
@@ -132,11 +132,11 @@ CS（CSNET类）、CH（CHAOS类）、HS（Hesiod）很少使用
 >
 > 在DNS中，权威服务器（Authoritative Server）是指能够对某个域名或主机名提供官方答案的DNS服务器。权威服务器通常是负责管理域名解析信息的DNS服务器，**它们保存有该域名下所有主机的IP地址等DNS记录，可以直接回答该域名下主机的DNS查询请求。**而非权威服务器则是指没有权威性的DNS服务器，它们通常只是缓存了其他服务器的DNS查询结果，以提高DNS查询效率。
 
-![image-20230303102208256](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303102208256.png)
+![image-20230303102208256](../images/image-20230303102208256.png)
 
 这个响应返回的baidu.com的IP在Answers里，展开如下：
 
-![image-20230303102548260](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303102548260.png)
+![image-20230303102548260](../images/image-20230303102548260.png)
 
 这里解析出来的2个IP和我执行 nslookup解析出来的结果是一样的：
 
@@ -158,17 +158,17 @@ Address: 110.242.68.66
 
 值为1的情况
 
-![image-20230303135525275](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303135525275.png)
+![image-20230303135525275](../images/image-20230303135525275.png)
 
 对应的响应为
 
-![image-20230303135651498](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303135651498.png)
+![image-20230303135651498](../images/image-20230303135651498.png)
 
 值为0的情况
 
 这里执行`dig +trace baidu.com`，4个请求的RD都是0，请求方192.168.1.5进行了迭代查询。
 
-![image-20230303135925682](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303135925682.png)
+![image-20230303135925682](../images/image-20230303135925682.png)
 
 > **递归查询和迭代查询**
 >

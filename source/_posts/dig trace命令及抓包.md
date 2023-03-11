@@ -21,15 +21,15 @@ categories:
 
 > IP地址 192.5.5.241 是由美国国家科学基金会（NSF）资助的互联网核心枢纽机构 VeriSign 公司拥有的一个地址，**是一个根域名服务器**，主要用于管理和运营域名系统（DNS）服务器，其中包括 .com 和 .net 域名的顶级域名服务器。
 
-![image-20230302180706556](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230302180706556.png)
+![image-20230302180706556](../images/image-20230302180706556.png)
 
 如果不特意指定+trace只是正常访问，抓到的包结果如下，首先访问了8.8.8.8
 
-![image-20230302181137764](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230302181137764.png)
+![image-20230302181137764](../images/image-20230302181137764.png)
 
 这是因为我在电脑的系统设置中配置的DNS地址是8.8.8.8
 
-![image-20230302181257209](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230302181257209.png)
+![image-20230302181257209](../images/image-20230302181257209.png)
 
 > 8.8.8.8是Google提供的公共DNS服务器的IP地址。**它不是根域名服务器，而是一个提供DNS解析服务的服务器。**
 
@@ -43,41 +43,41 @@ categories:
 
 但是wireshark显示的响应时间还是用第一个返回的响应包计算的，而不是后两个响应包计算的
 
-![image-20230303100707363](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303100707363.png)
+![image-20230303100707363](../images/image-20230303100707363.png)
 
 ## 抓包详解
 
 我执行了`dig +trace baidu.com`，抓到的包为：
 
-![image-20230303170324725](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303170324725.png)
+![image-20230303170324725](../images/image-20230303170324725.png)
 
 我想知道第一个访问的IP 202.12.27.33 是什么，发现这是一台根域名服务器，目前世界上有13台根域名服务器，这是其中的一台。13台根域名服务器的域名分别是A.ROOT-SERVERS.NET到M.ROOT-SERVERS.NET
 
 可见第一次是随机找了一个根域名服务器访问的。
 
-![image-20230303170408258](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303170408258.png)
+![image-20230303170408258](../images/image-20230303170408258.png)
 
 看看这台根域名服务器返回了什么
 
-![image-20230303171542534](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303171542534.png)
+![image-20230303171542534](../images/image-20230303171542534.png)
 
 可以看到返回了13个.net结尾的域名，分别是a.gtld-servers.net到m.gtld-servers.net，这负责管理 ".com" 顶级域名的13台根域名服务器（也叫一级域名服务器）之一，这里的type是NS，表示请求a.gtld-servers.net这些域名服务器可以获得baidu.com的相关信息。在Additional records还说明了这些顶级域名服务器的IP地址是什么，注意这里的Type是A，表示这些域名对应的IP分别是什么，如m.gtld-servers.net对应的IP是192.55.83.30.
 
 接着随机选了一台g.gtld-servers.net，如数据包202所示，发出请求后获取的响应如下：
 
-![image-20230303171717446](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303171717446.png)
+![image-20230303171717446](../images/image-20230303171717446.png)
 
 ns2.baidu.com这些是存储baidu.com的二级域名服务器，type为NS表示可以访问ns2.baidu.com来获取baidu.com的IP。
 
 接着选择了一台ns3.baidu.com，其IP为36.152.45.193，如数据包208所示，发出请求后获取的响应如下：
 
-![image-20230303172646394](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303172646394.png)
+![image-20230303172646394](../images/image-20230303172646394.png)
 
 可以看到本次终于获取到了Answers。
 
 我发现这几次DNS请求中都有指定OPT，于是了解了一下这个OPT的含义：DNS查询中的OPT是指“Options”（选项）字段，它允许在DNS查询或响应中添加额外的信息，如DNSSEC（DNS安全扩展）相关的信息，以及用于DNS性能、优化和其他目的的标志。
 
-![image-20230303175025840](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303175025840.png)
+![image-20230303175025840](../images/image-20230303175025840.png)
 
 Ps:发现有时在上面的访问根服务器（上面的是 202.12.27.33）的第一步前，会给我本地配置的NDS服务器8.8.8.8发送请求：
 

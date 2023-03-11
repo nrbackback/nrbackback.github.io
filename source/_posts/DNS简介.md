@@ -172,7 +172,7 @@ mDNS的作用就是解决这个问题
 
 域名体系：
 
-![image-20230303113424953](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303113424953.png)
+![image-20230303113424953](../images/image-20230303113424953.png)
 
 **如果本地域名服务器无法对域名进行解析，就首先求助于根域名服务器。**
 
@@ -182,7 +182,7 @@ mDNS的作用就是解决这个问题
 
 一个完整的域名解析过程如下图所示：
 
-![image-20230303113654927](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303113654927.png)
+![image-20230303113654927](../images/image-20230303113654927.png)
 
 这个根据资源名称(域名)来查找地址的过程, 就称为DNS, DNS查找通常会经过下面四步:
 
