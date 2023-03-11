@@ -110,13 +110,13 @@ err    error
 
   ```
   // +build linux darwin
-
+  
   func listenSignal() {}
   ```
 
   ```
   // +build linux darwin
-
+  
   func listenSignal() {}
   ```
 * **多个返回值命名** `func getUserPasswordAndHost(url string) (scheme, user, password, host string)`

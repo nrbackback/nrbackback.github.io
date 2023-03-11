@@ -18,14 +18,46 @@ categories:
 
 数据包在DNS之后还有2段数据，分别是以太网的Trailer和以太网帧校验序列（FCS）。
 
-
-
 ![image-20230303102132074](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303102132074.png)
 
 Authority RRs  权威名称服务器计数：权威名称服务器的数目。
 Additional RRs  附加资源记录数：额外的记录数目（权威名称服务器对应 IP 地址的数目）。
 
-### Flag 
+### Answers
+
+> Answers 部分的响应数据是根据查询所请求的 DNS 记录类型和查询类型（递归查询或迭代查询）而返回的。如果没有找到匹配的记录，则响应的 Answers 部分将为空。
+
+Answers在有的Response里可能为空，Answers里可能的Type的值我抓包时看到了以下几种（通过gopacket分析的）：
+
+NS、A、CNAME、PTR、AAAA、SOA、Unknown
+
+![image-20230306150548748](../images/image-20230306150548748.png)
+
+![image-20230306162407622](../images/image-20230306162407622.png)
+
+SOA对应的请求为
+
+![image-20230306162511347](../images/image-20230306162511347.png)
+
+还有抓包抓到了一些gopacket里没有定义的类型，比如RRSIG，其对应的值为46
+
+> DNS RRSIG (Resource Record Signature) 是一种 DNS 记录类型，用于提供 DNSSEC (DNS Security Extensions) 安全扩展的数字签名。RRSIG 记录对指定的 DNS 记录进行数字签名，并在签名中包含有关签名算法、签名有效期和其他信息。
+
+![image-20230306154851361](../images/image-20230306154851361.png)
+
+还有DS类型的，其对应的值为43
+
+![image-20230306155602060](../images/image-20230306155602060.png)
+
+此外还有值为48的DNSKEY类型
+
+![image-20230306162741839](../images/image-20230306162741839.png)
+
+其对应的请求为：
+
+![image-20230306162810925](../images/image-20230306162810925.png)
+
+### Flag
 
 包含了以下这些字段：
 
@@ -99,10 +131,6 @@ DNS报文中的附加信息Additional records字段包含了一些额外的记�
 
 在DNS查询中，附加记录可以帮助客户端更快地获取所需的信息，而不必进行额外的DNS查询。例如，当客户端需要连接某个Web服务器时，Web服务器通常会在DNS响应中返回其IP地址以及网站运行的操作系统版本等信息，客户端可以将这些信息缓存下来，以便更快地建立连接。
 
-
-
-
-
 ## DNS类型
 
 **我总结了下**：每台DNS服务器可以理解为一个表，表存储了一行行信息，每行信息可能是 域名- DNS类型- IP，或者是域名- DNS类型-域名。
@@ -114,7 +142,7 @@ DNS报文中的附加信息Additional records字段包含了一些额外的记�
 - NS记录：NS记录是一个指针记录，它指向一组该域名授权的域名服务器的名称。当客户端要查询该域名下的某个主机的IP地址时，需要先向授权域名服务器查询，因此NS记录在DNS解析过程中非常重要。
 - A记录：A记录是最基本的DNS记录类型，是Address Record的缩写，它将域名解析为IPv4地址。例如，将www.example.com解析为192.0.2.1。
 - AAAA记录：和A记录类似，但是它将域名解析为IPv6地址
-- CNAME：将一个别名解析为实际的主机名。？？？？？？？？？
+- CNAME：将一个别名解析为实际的主机名。
 - MX记录（Mail Exchange Record）：指定邮件交换服务器的地址。
 - PTR记录（Pointer Record）：反向解析记录，将IP地址解析为域名。
 - SOA记录（Start of Authority Record）：区域文件的授权记录，指定了负责该域的DNS服务器。
@@ -181,8 +209,6 @@ CS（CSNET类）、CH（CHAOS类）、HS（Hesiod）很少使用
 
 > 8.8.8.8是Google提供的公共DNS服务器的IP地址。**它不是根域名服务器，而是一个提供DNS解析服务的服务器。**
 
-
-
 ## 重传的情况
 
 下面的4499和4501都是响应重传包，都是在响应包4497这个响应包发送后重传的
@@ -196,8 +222,6 @@ CS（CSNET类）、CH（CHAOS类）、HS（Hesiod）很少使用
 但是wireshark显示的响应时间还是用第一个返回的响应包计算的，而不是后两个响应包计算的
 
 ![image-20230303100707363](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303100707363.png)
-
-
 
 ## 域名体系
 
@@ -247,9 +271,35 @@ ns2.baidu.com这些是存储baidu.com的二级域名服务器，type为NS表示�
 
 ![image-20230303175025840](/Users/rhettnina/我的本地文件/代码/my/nrbackback.github.io/source/images/image-20230303175025840.png)
 
+Ps:发现有时在上面的访问根服务器（上面的是 202.12.27.33）的第一步前，会给我本地配置的NDS服务器8.8.8.8发送请求：
+
+![image-20230306111608645](../images/image-20230306111608645.png)
+
+可以看出，这是请求根域名服务器的信息的，返回为：
+
+> 补充：返回的flag为0x80a0，因为截图截不到这个信息，所以在这里单独补充
+
+![image-20230306111849411](../images/image-20230306111849411.png)
+
+还有Additional Records：
+
+![image-20230306111917003](../images/image-20230306111917003.png)
+
+注意这里的Additional Records并没有像我预期的那样给出上面的13个根域名服务器的IP地址，因为其实13个根域名服务器的IP地址通常是固定的，所以没有必要再次返回了。这是DNS协议的规定，也是为了减少网络流量和提高DNS解析效率。这里在13个根域名服务器选择一个，然后DNS客户端本地应该存储了13个根域名服务器对应的IP地址，再找到选择出来的那个根域名服务器对应的IP地址（比如上面的是202.12.27.33），再给这个IP地址发送请求。
 
 
 
+## DNS截断例子
+
+![image-20230307153037170](../images/image-20230307153037170.png)
+
+这里抓到了一个DNS截断包，使用gopacket获取layers得到的结果是
+
+```
+Ethernet IPv4 UDP DecodeFailure
+```
+
+具体pcap文件在images/dns-only-5.pcap
 
 
 
