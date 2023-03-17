@@ -46,3 +46,4 @@ select nested_array.1 from test # 这里查询的出来的就是第一个列，�
 如果是Array(Tuple(Int32, String))类型的，存储到数据库实际上只存储为了一列，只是这一列是个数组，数组的每个元素是个json对象。
 
 Nested比Tuple更为灵活，可以指定字段名
+
