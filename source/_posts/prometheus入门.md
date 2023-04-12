@@ -9,11 +9,13 @@ categories:
 
 ## 启动
 
-`prometheus --config.file=prometheus.yml`
+```
+prometheus --config.file=prometheus.yml
+```
 
-可以在<http://localhost:9090/metrics查看prometheus>的指标
+可以在 http://localhost:9090/metrics 查看prometheus的指标
 
-<http://localhost:9090查看prometheus>的状态
+http://localhost:9090 查看prometheus的状态
 
 ## 在浏览器中查询指标
 
@@ -169,8 +171,149 @@ ts=2022-05-26T06:58:58.408Z caller=mysqld_exporter.go:303 level=info msg="Listen
 
 启动`brew services start grafana`
 
-打开<http://localhost:3000即可访问grafana>
+打开 http://localhost:3000 即可访问grafana
 
 可以在<http://localhost:3000/d/UDdpyzz7z/prometheus-2-0-stats?orgId=1&refresh=1m看到prometheus>的整个监控信息
 
 如果发现grafana一些面板需要插件才可以显示，使用`grafana-cli plugins install <plugin>`安装插件然后重启grafana查看面板。
+
+----------
+
+## linux部署
+
+下面的操作基于我的虚拟机，一切都是实际操作
+
+首先根据[参考](https://jingsam.github.io/2018/10/16/host-in-docker.html)查看ifconfig，找到docker0的信息：
+
+```shell
+docker0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 172.17.0.1  netmask 255.255.0.0  broadcast 172.17.255.255
+        inet6 fe80::42:8aff:fe25:4455  prefixlen 64  scopeid 0x20<link>
+        ether 02:42:8a:25:44:55  txqueuelen 0  (Ethernet)
+        RX packets 78747  bytes 103664790 (98.8 MiB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 103397  bytes 72780700 (69.4 MiB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+```
+
+记住其IP地址172.17.0.1，下面会用。
+
+> 因为在Linux下安装Docker的时候，会在宿主机安装一个虚拟网卡`docker0`，我们可以使用宿主机在`docker0`上的IP地址来代替`localhost`。
+>
+> **但是，在Windows和macOS平台下并没有`docker0`虚拟网卡，这时候可以使用`host.docker.internal`这个特殊的DNS名称来解析宿主机IP。**
+
+### **Prometheus部署**
+
+prometheus.yml文件示例：
+
+```yaml
+global:
+  scrape_interval:     60s
+  evaluation_interval: 60s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+        #本地服务器加端口
+      - targets: ['localhost:9090']
+        labels:
+          instance: prometheus
+```
+
+启动
+
+```shell
+docker run  -d \
+  -p 9090:9090 \
+  -v $PWD/prometheus.yml:/etc/prometheus/prometheus.yml  \
+  --name prometheus \
+  prom/prometheus
+```
+
+访问 http://localhost:9090 即可看到页面。
+
+![image-20230328154547280](../images/image-20230328154547280.png)
+
+### **grafana部署**
+
+新建一个存储grafana数据的目录
+
+```shell
+mkdir grafana
+```
+
+运行
+
+```shell
+docker run -d \
+  -p 3000:3000 \
+  --name=grafana \
+  -v $PWD/grafana:/var/lib/grafana \
+  --name grafana \
+  grafana/grafana
+```
+
+运行的时候发现服务没有成功启动，根据容器ID查看日志：
+
+```shell
+docker inspect --format '{{.LogPath}}'  00000docker_id0000
+```
+
+根据输出结果，查看容器日志：
+
+```
+{"log":"GF_PATHS_DATA='/var/lib/grafana' is not writable.\n","stream":"stdout","time":"2023-03-28T07:55:02.969473242Z"}
+{"log":"You may have issues with file permissions, more information here: http://docs.grafana.org/installation/docker/#migrate-to-v51-or-later\n","stream":"stdout","time":"2023-03-28T07:55:02.969536557Z"}
+{"log":"mkdir: can't create directory '/var/lib/grafana/plugins': Permission denied\n","stream":"stderr","time":"2023-03-28T07:55:02.969907168Z"}
+```
+
+根据[文档](https://www.edureka.co/community/83970/cannot-create-directory-grafana-plugins-permission-denied#:~:text=You%20are%20getting%20this%20error,changes%20and%20rerun%20your%20command.)，发现报错是因为Grafana 需要具有 472 用户 ID 的用户。 但是还没有为用户/组 472 设置权限。执行
+
+```
+sudo chown -R 472:472 grafana/
+```
+
+再次重新启动docker，可以成功启动了。访问 http://localhost:3000 ，默认的用户名和密码都是admin。
+
+登录后设置数据源，HTTP部分的URL写http://172.17.0.1:9090，设置完毕后点击页面最下面的save&test测试是否可以顺利连接。
+
+### **添加Prometheus exporter** 
+
+这里选择node-exporter，这个exporter可以导出系统指标。
+
+```shell
+docker run -d -p 9100:9100 \
+  -v "$PWD/node-exporter/proc:/host/proc:ro" \
+  -v "$PWD/node-exporter/sys:/host/sys:ro" \
+  -v "$PWD/node-exporter/:/rootfs:ro" \
+  --name node-exporter \
+  prom/node-exporter
+```
+
+查看 http://localhost:9100/metrics 验证是否有数据
+
+修改配置文件prometheus.yml
+
+```diff
+global:
+  scrape_interval:     60s
+  evaluation_interval: 60s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+        #本地服务器加端口
+      - targets: ['localhost:9090']
+        labels:
+          instance: prometheus
+
++  - job_name: localhost-node-exporter
++    static_configs:
++      - targets: ['172.17.0.1:9100']
++        labels:
++          instance: localhost-node-exporter
+```
+
+通过`docker restart prometheus`重启prometheus。
+
+查看 http://127.0.0.1:9090/targets 确认exporter的数据是否上传成功
