@@ -290,7 +290,7 @@ docker run -d -p 9100:9100 \
   prom/node-exporter
 ```
 
-查看 http://localhost:9100/metrics 验证是否有数据
+查看验证是否有数据
 
 修改配置文件prometheus.yml
 
@@ -317,3 +317,18 @@ scrape_configs:
 通过`docker restart prometheus`重启prometheus。
 
 查看 http://127.0.0.1:9090/targets 确认exporter的数据是否上传成功
+
+> 这里的配置instance: localhost-node-exporter作用的效果是普罗米修斯会给node-exporter的所有指标加上一个label
+>
+> 比如直接查看http://127.0.0.1:9100/metrics 可以看到这样一个指标
+>
+> ![image-20230606180151248](../images/image-20230606180151248.png)
+>
+> 如果在http://127.0.0.1:9090/graph 查询这个指标，就会发现这个指标多了一个叫instance的label
+>
+> ![image-20230606180351293](../images/image-20230606180351293.png)
+>
+> 这个label的key和value对应配置文件`instance: localhost-node-exporter`指定的label
+>
+> 此外普罗米修斯还加了一个job的label，这个label的值就是配置文件`job_name: localhost-node-exporter`对应的值localhost-node-exporter
+
