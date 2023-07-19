@@ -85,6 +85,15 @@ key{metadata}value （metadata也可以称为labels）
 
 **Summary(摘要)**
 
+**Gauges**：记录某个时刻对应的数值，类似：
+
+```shell
+myapp_data{time="2023-06-07 11:35:57"} 0.6046602879796196
+myapp_data{time="2023-06-07 11:36:57"} 0.9405090880450124
+```
+
+可以根据时间time绘图，横坐标为时间，纵坐标为时间对应的指标值
+
 #### PromQL
 
 这是prometheus自己内置的SQL查询语言
@@ -312,6 +321,7 @@ scrape_configs:
 +      - targets: ['172.17.0.1:9100']
 +        labels:
 +          instance: localhost-node-exporter
++。   scrape_interval: 30s # 采样频率，普罗米修斯从exporter采集指标的时间间隔
 ```
 
 通过`docker restart prometheus`重启prometheus。
