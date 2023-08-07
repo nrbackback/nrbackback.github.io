@@ -1,3 +1,10 @@
+---
+title: GraphQL入门
+date: 2023-6-11 00:00:00
+categories:
+- 其他
+---
+
 # GraphQL入门
 
 GraphQL 是一个用于 API 的查询语言
