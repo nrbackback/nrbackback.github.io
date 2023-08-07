@@ -1,5 +1,6 @@
 ---
 title: 编写中，未定稿
+draft: true  # 设置为草稿
 date: 2000-01-01 11:00:00
 categories:
 - 数据库
