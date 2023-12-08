@@ -216,7 +216,7 @@ ENGINE = TinyLog;
 
 ## 聚合
 
-**click house支持聚合操作，有一些标准聚合函数:**
+**click house支持聚合操作，有一些标准聚合函数:**8
 
 **count，min，max等**
 
