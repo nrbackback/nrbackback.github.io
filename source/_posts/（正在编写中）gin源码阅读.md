@@ -66,6 +66,10 @@ TODO
 
 ## gin源代码阅读
 
+我电脑上gin的储存位置为` ~/MyLocalFile/代码/fromweb/gopacket-fram`，改名是为了上班时看便于伪装，这个项目里记录了我阅读时的笔记记录。
+
+
+
 gin是一个知名的HTTP web框架。
 
 对于gin的调用处一般都是这样写的：
@@ -130,6 +134,17 @@ type Handler interface {
 go:build 是一个编译指令（build constraint），用于在不同的Go版本或操作系统之间条件编译代码。`!go1.20`表示如果Go版本小于1.20，那么以下代码块将会被编译，否则将被忽略。`go1.20` 表示如果Go版本等于1.20或更高，那么以下代码块将会被编译，否则将被忽略。
 
 golang有个类型是any，是原生的，其作用和interface相同，其实是interface的别名
+
+1.16更新
+
+看关于cleanPath的实现
+
+![image-20240116143401223](../images/image-20240116143401223.png)
+
+
+
+
+
 
 
 
