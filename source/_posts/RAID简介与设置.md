@@ -262,6 +262,7 @@ MegaCli64 -CfgLdDel -L%s -force -a%s
 - Unconfigured(good), Spun Up：表示该状态良好，可以对该盘进行RAID操作
 - JBOD：盘在JBOD阵列中。
 
+如果当前硬盘状态就是要设置的状态，那么可以不用执行设置状态的命令了，因为是重复设置了，否则可能会报错。
 参考
 
 [RAID配置与解释](https://www.cnblogs.com/123456789SI/p/16793811.html)
