@@ -1,11 +1,12 @@
 ---
-title: 编写中，未定稿
-draft: true  # 设置为草稿
-date: 2023-01-01 11:00:00
+title: 《clickhouse原理解析与应用实战》阅读笔记
+date: 2024-02-06 14:00:00
+tags:
+- 读书
 categories:
 - 数据库
 ---
-
+记录的是阅读《clickhouse原理解析与应用实战》这本书是的笔记，主要记录了一些个人觉得比较重要的知识点，不是很系统性的，可能有些零散。纯主观。
 ## 第1章 ClickHouse的前世今生
 
 ### 1.1 传统BI系统之殇
@@ -694,6 +695,218 @@ UNION ALL子句能够联合左右两边的两组子查询，将结果一并返 �
 
 ### 10.3 ReplicatedMergeTree原理解析
 
+ReplicatedMergeTree作为复制表系列的基础表引擎，涵盖了数据 副本最为核心的逻辑，将它拿来作为副本的研究标本是最合适不过 了。因为只要剖析了ReplicatedMergeTree的核心原理，就能掌握整个 ReplicatedMergeTree系列表引擎的使用方法。
 
+无论MERGE操作从哪个副本发起，其合并计划都会交由主副本来制定。
 
-to read P377
+当监听到有新的MUTATION日志加入时，并不是所有副本都会直接做出响应，它们首先会判断 自己是否为主副本。
+
+### 10.4 数据分片
+
+通过引入数据副本，虽然能够有效降低数据的丢失风险(多份存储)，并提升查询的性能(分摊查询、读写分离)，但是仍然有一个问题没有解决，那就是数据表的容量问题。到目前为止，每个副本自身，仍然保存了数据表的全量数据。所以在业务量十分庞大的场景中，依靠副本并不能解决单表的性能瓶颈。想要从根本上解决这类问
+题，需要借助另外一种手段，即进一步将数据水平切分，也就是我们将要介绍的数据分片。
+
+ClickHouse中的每个服务节点都可称为一个shard(分片)。从理 论上来讲，假设有N(N>=1)张数据表A，分布在N个ClickHouse服务节 点，而这些数据表彼此之间没有重复数据，那么就可以说数据表A拥有 N个分片。然而在工程实践中，如果只有这些分片表，那么整个 Sharding(分片)方案基本是不可用的。对于一个完整的方案来说， 还需要考虑数据在写入时，如何被均匀地写至各个shard，以及数据在 查询时，如何路由到每个shard，并组合成结果集。所以，ClickHouse 的数据分片需要结合Distributed表引擎一同使用，
+
+![image-20240205175818016](../images/image-20240205175818016.png)
+
+Distributed表引擎自身不存储任何数据，它能够作为分布式表的 一层透明代理，在集群内部自动开展数据的写入、分发、查询、路由 等工作。
+
+在前面介绍数据副本时为了创建多张副本 表，我们需要分别登录到每个ClickHouse节点，在它们本地执行各自的 CREATE语句。这是因为在默认的情况下，CREATE、DROP、RENAME和ALTER等 DDL语句并不支持分布式执行。而在加入集群配置后，就可以使用新的语法 实现分布式DDL执行了，其语法形式如下:
+
+```sql
+ CREATE/DROP/RENAME/ALTER TABLE  ON CLUSTER cluster_name
+```
+
+cluster_name对应了配置文件中的集群名称，ClickHouse会根 据集群的配置信息顺藤摸瓜，分别去各个节点执行DDL语句。
+
+### 10.5 Distribution原理解析
+
+Distributed表引擎是分布式表的代名词，它自身不存储任何数 据，而是作为数据分片的透明代理，能够自动路由数据至集群中的各 个节点，所以Distributed表引擎需要和其他数据表引擎一起协同工 作，
+
+![image-20240205180253001](../images/image-20240205180253001.png)
+
+本地表:通常以_local为后缀进行命名。本地表是承接数据的 载体，**可以使用非Distributed的任意表引擎**，一张本地表对应了一个 数据分片。
+
+分布式表:通常以_all为后缀进行命名。**分布式表只能使用 Distributed表引擎**，它与本地表形成一对多的映射关系，日后将通过分布式表代理操作多张本地表。
+
+对于分布式表与本地表之间表结构的一致性检查，Distributed表 引擎采用了读时检查的机制，**这意味着如果它们的表结构不兼容，只 有在查询时才会抛出错误，而在创建表时并不会进行检查。**不同 ClickHouse节点上的**本地表之间，使用不同的表引擎也是可行的**，但 是通常不建议这么做，保持它们的结构一致，有利于后期的维护并避 免造成不可预计的错误。
+
+Distributed表引擎的定义形式如下所示:
+
+```sql
+ENGINE = Distributed(cluster, database, table [,sharding_key])
+```
+
+其中，各个参数的含义分别如下:
+
+·cluster:集群名称，与集群配置中的自定义名称相对应。在对 分布式表执行写入和查询的过程中，它会使用集群的配置信息来找到 相应的host节点。
+
+·database和table:分别对应数据库和表的名称，分布式表使用 这组配置映射到本地表。
+
+·sharding_key:分片键，选填参数。在数据写入的过程中，分 布式表会依据分片键的规则，将数据分布到各个host节点的本地表。
+
+现在用示例说明Distributed表的声明方式，建表语句如下所示:
+
+```sql
+ CREATE TABLE test_shard_2_all ON CLUSTER sharding_simple (
+       id UInt64
+   )ENGINE = Distributed(sharding_simple, default, test_shard_2_local,rand())
+```
+
+上述表引擎参数的语义可以理解为，代理的本地表为 default.test_shard_2_local，它们分布在集群sharding_simple的各 个shard，在数据写入时会根据rand()随机函数的取值决定数据写入哪 个分片。值得注意的是，此时此刻本地表还未创建，所以从这里也能 看出，**Distributed表运用的是读时检查的机制，对创建分布式表和本 地表的顺序并没有强制要求。**同样值得注意的是，在上面的语句中使 用了ON CLUSTER分布式DDL，这意味着在集群的每个分片节点上，都会 创建一张Distributed表，如此一来便可以从其中任意一端发起对所有 分片的读、写请求，如图10-13所示。
+
+在向集群内的分片写入数据时，通常有两种思路:一种是借助外部计算系 统，事先将数据均匀分片，再借由计算系统直接将数据写入ClickHouse集群的 各个本地表。这种方式很依赖外部，对clickhouse依赖不高。一般使用第二种思路：通过Distributed表引擎代理写入分片数据。
+
+如果在集群的配置中包含了副本，那么除了刚才的分片写入流程之外，还 会触发副本数据的复制流程。数据在多个副本之间，有两种复制实现方式:一 种是继续借助Distributed表引擎，由它将数据写入副本;**另一种则是借助 ReplicatedMergeTree表引擎实现副本数据的分发。**
+
+![image-20240205180902811](../images/image-20240205180902811.png)
+
+与数据写入有所不同，在面向集群查询数据的时候，只能通过Distributed表引擎实现。当 Distributed表接收到SELECT查询的时候，它会依次查询每个分片的数据，再合并汇总返回
+
+在查询数据的时候，如果集群中的一个shard，拥有多个replica，那么Distributed表引擎需要面临 副本选择的问题。它会使用负载均衡算法从众多replica中选择一个，而具体使用何种负载均衡算法，则 由load_balancing参数控制
+
+分布式查询与分布式写入类似，同样本着谁执行谁负责的原则，它会由接收SELECT查询的 Distributed表，并负责串联起整个过程。首先它会将针对分布式表的SQL语句，按照分片数量将查询拆分 成若干个针对本地表的子查询，然后向各个分片发起查询，最后再汇总各个分片的返回结果。如果对分布 式表按如下方式发起查询:
+
+SELECT * FROM distributed_table
+
+那么它会将其转为如下形式之后，再发送到远端分片节点来执行:
+
+SELECT * FROM local_table
+
+**为了解决查询放大的问题，可以使用GLOBAL IN或JOIN进行优化。**现在对刚才的SQL进行改造，为其增 加GLOBAL修饰符:
+
+```sql
+SELECT uniq(id) FROM test_query_all WHERE repo = 100
+AND id GLOBAL IN (SELECT id FROM test_query_all WHERE repo = 200)
+```
+
+再次分析查询的核心过程，如图10-21所示。 整个过程由上至下大致分成5个步骤: (1)将IN子句单独提出，发起了一次分布式查询。 (2)将分布式表转local本地表后，分别在本地和远端分片执行查询。 (3)将IN子句查询的结果进行汇总，并放入一张临时的内存表进行保存。 (4)将内存表发送到远端分片节点。(5)将分布式表转为本地表后，开始执行完整的SQL语句，**IN子句直接使用临时内存表的数据。**
+
+至此，整个核心流程结束。可以看到，在使用GLOBAL修饰符之后，ClickHouse使用内存表临时保存了 IN子句查询到的数据，并将其发送到远端分片节点，以此到达了数据共享的目的，从而避免了查询放大的 问题。由于数据会在网络间分发，所以需要特别注意临时表的大小，IN或者JOIN子句返回的数据不宜过 大。如果表内存在重复数据，也可以事先在子句SQL中增加DISTINCT以实现去重。
+
+### 10.6 本章小结
+
+本章全方面介绍了副本、分片和集群的使用方法，并且详细介绍了它们的作用以及核心工作流程。
+
+首先我们介绍了数据副本的特点，并详细介绍了 ReplicatedMergeTree表引擎，它是MergeTree表引擎的变种，同时也 是数据副本的代名词;接着又介绍了数据分片的特点及作用，同时在 这个过程中引入了ClickHouse集群的概念，并讲解了它的工作原理; 最后介绍了Distributed表引擎的核心功能与工作流程，借助它的能 力，可以实现分布式写入与查询。
+
+## 第11章 管理与运维
+
+本章会介绍ClickHouse的权限、熔断机 制、数据备份和服务监控等知识
+
+### 11.1 用户配置
+
+user.xml配置文件默认位于/etc/clickhouse-server路径下， ClickHouse使用它来定义用户相关的配置项，包括系统参数的设定、 用户的定义、权限以及熔断机制等。
+
+用户profile的作用类似于用户角色。可以预先在user.xml中为 ClickHouse定义多组profile，并为每组profile定义不同的配置项， 以实现配置的复用。
+
+constraints标签可以设置一组约束条件，以保障profile内的参 数值不会被随意修改。在default中默认定义的constraints约 束，将作为默认的全局约束，自动被其他profile继承。
+
+### 11.2 权限管理
+
+ClickHouse分别从访问、 查询和数据等角度出发，层层递进，为我们提供了一个较为立体的权 限体系。
+
+访问层控制是整个权限体系的第一层防护，它又可进一步细分成两类权限：网络访问权限和数据库与字典访问权限。
+
+网络访问权限使用networks标签设置，用于限制某个用户登录的客户端地 址，有IP地址、host主机名称以及正则匹配三种形式，可以任选其中一种进行 设置。
+
+在客户端连入服务之后，可以进一步限制某个用户数据库和字典的访问权 限，它们分别通过allow_databases和allow_dictionaries标签进行设置。如果 不进行任何定义，则表示不进行限制。
+
+查询权限是整个权限体系的第二层防护，它决定了一个用户能够执行的查询语句。查询权限可以分成以下四类:
+
+·读权限:包括SELECT、EXISTS、SHOW和DESCRIBE查询。
+
+·写权限:包括INSERT和**OPTIMIZE**查询。
+
+·设置权限:包括SET查询。
+
+·DDL权限:包括CREATE、DROP、ALTER、RENAME、ATTACH、 DETACH和TRUNCATE查询。
+
+·其他权限:包括KILL和USE查询，任何用户都可以执行这些查 询。
+
+数据权限是整个权限体系中的第三层防护，它决定了一个用户能够看到什么 数据。数据权限使用databases标签定义，它是用户定义中的一项选填设置。 database通过定义用户级别的查询过滤器来实现数据的行级粒度权限，它的定义 规则如下所示:
+
+```xml
+<databases> <database_name><!--数据库名称-->
+<table_name><!--表名称-->
+<filter> id < 10</filter><!--数据过滤条件-->
+               </table_name>
+       </database_name>
+```
+
+其中，database_name表示数据库名称;table_name表示表名称;而filter则 是权限过滤的关键所在，它等同于定义了一条WHERE条件子句，与WHERE子句类 似，它支持组合条件。
+
+那么数据权限的设定是如何实现的呢?它是在上述代码在普通查询计划的基础之上自动附加了Filter过滤的步 骤。
+
+对于数据权限的使用有一点需要明确，在使用了这项功能之后，PREWHERE优 化将不再生效。如果使用了数据权限，那么这条SQL将不会进行PREWHERE优化;反之，如 果没有设置数据权限，则会进行PREWHERE优化
+
+### 11.4 数据备份
+
+如果数据的体量较小，可以通过dump的形式将数据导出为本地文件。
+
+还可以通过快照备份：快照表实质上就是普通的数据表，它通常按照业务规定的备份频率创建，例如按天或者按周创建。所 以首先需要建立一张与原表结构相同的数据表，然后再使用INSERT INTO SELECT句式，点对点地将数据从 原表写入备份表。
+
+此外还可以按照分区备份。基于数据分区的备份，ClickHouse目前提供了FREEZE与FETCH两种方式。
+
+FREEZE的完整语法如下所示:
+
+```sql
+ ALTER TABLE tb_name FREEZE PARTITION partition_expr
+```
+
+分区在被备份之后，会被统一保存到ClickHouse根路径/shadow/N子目录 下。其中，N是一个自增长的整数，它的含义是备份的次数(FREEZE执行过多 少次)，具体次数由shadow子目录下的increment.txt文件记录。而分区备份 实质上是对原始目录文件进行硬链接操作，所以并不会导致额外的存储空间。 整个备份的目录会一直向上追溯至data根路径的整个链路:
+
+```sql
+/data/[database]/[table]/[partition_folder]
+```
+
+例如执行下面的语句，会对数据表partition_v2的201908分区进行备份:
+
+```sql
+ :) ALTER TABLE partition_v2 FREEZE PARTITION 201908
+```
+
+进入shadow子目录，即能够看到刚才备份的分区目录:
+
+```sql
+# pwd
+   /chbase/data/shadow/1/data/default/partition_v2
+   # ll
+   total 4
+   drwxr-x---. 2 clickhouse clickhouse 4096 Sep  1 00:22 201908_5_5_0
+```
+
+对于备份分区的还原操作，则需要借助ATTACH装载分区的方式来实现。这 意味着如果要还原数据，首先需要主动将shadow子目录下的分区文件复制到相 应数据表的detached目录下，然后再使用ATTACH语句装载。
+
+使用FETCH备份：FETCH只支持ReplicatedMergeTree系列的表引擎，它的完整语法如下所 示:
+
+```sql
+ ALTER TABLE tb_name FETCH PARTITION partition_id FROM zk_path
+```
+
+### 11.5 服务监控
+
+在众多的**SYSTEM系统表中**，主要由以下三张表支撑了对ClickHouse运 行指标的查询，它们分别是metrics、events和asynchronous_metrics。
+
+metrics表用于统计ClickHouse服务在运行时，当前正在执行的高层 次的概要信息，包括正在执行的查询总次数、正在发生的合并操作总次数 等。
+
+events用于统计ClickHouse服务在运行过程中已经执行过的高层次的 累积概要信息，包括总的查询次数、总的SELECT查询次数等
+
+asynchronous_metrics用于统计ClickHouse服务运行过程时，当前正 在后台异步运行的高层次的概要信息，包括当前分配的内存、执行队列中 的任务数量等。
+
+查询日志目前主要有6种类型，它们分别从不同角度记录了ClickHouse的操作行为。分为如下类型：
+
+query_log记录了ClickHouse服务中所有已经执行的查询记录
+
+query_thread_log记录了所有线程的执行查询的信息
+
+part_log日志记录了MergeTree系列表引擎的分区操作日志
+
+text_log日志记录了ClickHouse运行过程中产生的一系列打印日志，包括INFO、DEBUG和Trace，
+
+metric_log日志用于将system.metrics和system.events中的数据汇聚到一起。包括：collect_interval_milliseconds表示收集metrics和events数据的时间周期。metric_log开启 后，即可以通过相应的系统表对记录进行查询。
+
+### 11.6 本章小结
+
+通过对本章的学习，大家可进一步了解ClickHouse的安全性和健 壮性。本章首先站在安全的角度介绍了用户的定义方法和权限的设置 方法。在权限设置方面，ClickHouse分别从连接访问、资源访问、查 询操作和数据权限等几个维度出发，提供了一个较为立体的权限控制 体系。接着站在系统运行的角度介绍了如何通过熔断机制保护 ClickHouse系统资源不会被过度使用。最后站在运维的角度介绍了数 据的多种备份方法以及如何通过系统表和查询日志，实现对日常运行 情况的监控。
