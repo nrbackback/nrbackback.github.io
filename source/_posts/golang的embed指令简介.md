@@ -1,6 +1,6 @@
 ---
 title: golang的embed指令简介
-date: 2024-1-19 10:05:00
+date: 2024-2-19 10:05:00
 categories:
 - golang
 ---
