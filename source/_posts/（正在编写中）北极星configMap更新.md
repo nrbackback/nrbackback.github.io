@@ -56,4 +56,3 @@ ConfigMap 可以通过卷挂载到 Pod 的容器内，使得容器可以读取�
 
 **使用 Helm：** Helm 是 Kubernetes 的一个包管理工具，可以用于部署和管理应用程序。通过 Helm Charts，你可以定义配置文件，并在需要更新时通过 Helm 更新部署。
 
-
