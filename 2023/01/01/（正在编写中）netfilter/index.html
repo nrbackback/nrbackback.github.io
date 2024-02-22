@@ -1,0 +1,707 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/fluid.png">
+  <link rel="icon" href="/img/fluid.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="John Doe">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="数据包进入OS及出去的顺序： 进入的流量：网卡nic -&gt; tcpdump -&gt; iptables(netfilter) -&gt; app 出去的流量：app -&gt; iptables(netfilter) -&gt; tcpdump -&gt; 网卡nic iptables工具&#x2F;命令是一个广泛使用的防火墙工具，iptables会利用内核的netfilter来过滤数据包">
+<meta property="og:type" content="article">
+<meta property="og:title" content="编写中，未定稿">
+<meta property="og:url" content="https://nrbackback.github.io/2023/01/01/%EF%BC%88%E6%AD%A3%E5%9C%A8%E7%BC%96%E5%86%99%E4%B8%AD%EF%BC%89netfilter/index.html">
+<meta property="og:site_name" content="后朋大乱斗">
+<meta property="og:description" content="数据包进入OS及出去的顺序： 进入的流量：网卡nic -&gt; tcpdump -&gt; iptables(netfilter) -&gt; app 出去的流量：app -&gt; iptables(netfilter) -&gt; tcpdump -&gt; 网卡nic iptables工具&#x2F;命令是一个广泛使用的防火墙工具，iptables会利用内核的netfilter来过滤数据包">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-01-01T03:00:00.000Z">
+<meta property="article:modified_time" content="2024-02-19T07:57:53.839Z">
+<meta property="article:author" content="John Doe">
+<meta name="twitter:card" content="summary_large_image">
+  
+  
+  <title>编写中，未定稿 - 后朋大乱斗</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    var CONFIG = {"hostname":"nrbackback.github.io","root":"/","version":"1.8.14","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+
+  
+<meta name="generator" content="Hexo 6.1.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>后朋大乱斗</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                标签
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="编写中，未定稿"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2023-01-01 11:00" pubdate>
+          2023年1月1日 上午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          2.9k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          25 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">编写中，未定稿</h1>
+            
+            <div class="markdown-body">
+              
+              <p>数据包进入OS及出去的顺序：</p>
+<p>进入的流量：<code>网卡nic</code> -&gt; <code>tcpdump</code> -&gt; <code>iptables(netfilter)</code> -&gt; <code>app</code></p>
+<p>出去的流量：<code>app</code> -&gt; <code>iptables(netfilter)</code> -&gt; <code>tcpdump</code> -&gt; <code>网卡nic</code></p>
+<p>iptables工具&#x2F;命令是一个广泛使用的防火墙工具，iptables会利用内核的netfilter来过滤数据包，其实是通过触发hook来实现过滤的。</p>
+<p>所有经过网络层的进出流量都会触发hook，</p>
+<h2 id="Netfilter-hook"><a href="#Netfilter-hook" class="headerlink" title="Netfilter hook"></a>Netfilter hook</h2><p>一共有5个netfilter对外提供的，用于注册勾子函数的勾子节点，可以来把自定义的hook勾子函数注册到netfilter的调用栈中。</p>
+<p>每个数据包会触发哪些勾子函数取决于数据包的流向（进流量还是出流量），数据包的目的地，数据包在上一个节点是被丢弃了还是拒绝了。</p>
+<p>上述的5个勾子节点如下：</p>
+<ul>
+<li><p>NF_IP_PRE_ROUTING：进入网络栈后的数据包会立刻触发该勾子，该勾子会 在任何路由策略做出数据包该发往哪里的决定前 会被触发。</p>
+</li>
+<li><p>NF_IP_LOCAL_IN：如果是进的数据包且数据包的目标是本机， 在数据包被路由后，该勾子会被触发。</p>
+</li>
+<li><p>NF_IP_FORWARD：如果是进的数据包且数据包的目标不是本机而是需要本机转发到其他主机的， 在数据包被路由后，该勾子会被触发。</p>
+</li>
+<li><p>NF_IP_LOCAL_OUT：本机要出去的数据包达到网络栈时就会立刻触发该勾子。</p>
+</li>
+<li><p>NF_IP_POST_ROUTING：任何出去或者转发的流量，在路由做出判断后，在线路上被发送出去前，会触发此勾子。</p>
+</li>
+</ul>
+<p>在这些勾子注册的内核模块需要提供一个数字用来决定当勾子被触发时，该内核模块何时被执行。该数字时用来决定多个内核模块的执行顺序的。每个内核模块被调用后都会返回给netfilter一个结果，该解决告诉netfilter应该如何处理当前数据包。</p>
+<h2 id="IPtables-和-chains"><a href="#IPtables-和-chains" class="headerlink" title="IPtables 和 chains"></a>IPtables 和 chains</h2><p>iptables使用一个tables表格来管理自己的rule规则。tables表格根据规则作出的结果对规则进行分类。比如，如果某个规则时对网络地址做翻译的，那么这个规则会被放在nat表格里。如果这个规则时用来决定是否让当前数据包包前往包的目的地，那么这个规则会被放到filter表格里。</p>
+<p>通过每一个iptables表格，规则会在不同的chain里被进一步组织。table是通过rule的目标来分类的，内置的chain则代表了触发该chain的netfilter的hook。内置的chain的名字上反映了和chain相关联的netfilter hook：</p>
+<ul>
+<li>PREROUTING：会被NF_IP_PRE_ROUTING hook触发</li>
+<li>INPUT：会被NF_IP_LOCAL_IN hook触发</li>
+<li>FORWARD：会被NF_IP_FORWARD hook触发</li>
+<li>OUTPUT：会被NF_IP_LOCAL_OUT hook hook触发</li>
+<li>POSTROUTING：会被NF_IP_POST_ROUTING hook触发</li>
+</ul>
+<p>TODO:下面的不晓得啥意思，后面看看再补充上</p>
+<p>Chains allow the administrator to control where in a packet’s delivery path a rule will be evaluated. Since each table has multiple chains, a table’s influence can be exerted at multiple points in processing. Because certain types of decisions only make sense at certain points in the network stack, every table will not have a chain registered with each kernel hook.</p>
+<p>There are only five <code>netfilter</code> kernel hooks, so chains from multiple tables are registered at each of the hooks. For instance, three tables have <code>PREROUTING</code> chains. When these chains register at the associated <code>NF_IP_PRE_ROUTING</code> hook, they specify a priority that dictates what order each table’s <code>PREROUTING</code> chain is called. Each of the rules inside the highest priority <code>PREROUTING</code> chain is evaluated sequentially before moving onto the next <code>PREROUTING</code> chain. We will take a look at the specific order of each chain in a moment.</p>
+<h2 id="哪些tables是可用的"><a href="#哪些tables是可用的" class="headerlink" title="哪些tables是可用的"></a>哪些tables是可用的</h2><p>让我们退后一步，看看ipatables命令提供的table表。这些代表了不同的rule集合，这些rule集合按照各自的关注领域组织，集合的目的就是为了evaluate评估数据包。</p>
+<h3 id="Filter-table"><a href="#Filter-table" class="headerlink" title="Filter table"></a>Filter table</h3><p>filter table是iptables里最广泛使用的一个。filter table用于决定某个数据包应该继续前往其目的地还是拒绝该数据包的请求。如果用防火墙相关的说法来说，filter table的功能就是”filtering”即过滤数据包。filter table提供了人们讨论起防火墙时会想到的大部分功能。</p>
+<h3 id="NAT-table"><a href="#NAT-table" class="headerlink" title="NAT table"></a>NAT table</h3><p>nat table用于实现网络地址转换rule规则。当数据包进入网络栈时，表格里的rule会决定是否需要修改以及如何修改数据包的源地址和目的地址，从而来影响数据包和任何流量的路由方式。当数据包无法直接进去网络时，NAT table通常用于将数据包路由到网络中。</p>
+<h3 id="Manage-table"><a href="#Manage-table" class="headerlink" title="Manage table"></a>Manage table</h3><p>manage table用于使用不同的方法修改数据包的IP header。例如，你可以修改数据包的TTL，或者延长或者缩短数据包可以维持的有效网络跳点数。其他IP header也可以通过类似的方法修改。</p>
+<p>该table还可以在数据包上放置内部内核“标记”，以便在其他表和其他网络工具中进行进一步处理。 该标记不会触及实际的数据包，而是将标记添加到数据包的内核表示中。</p>
+<h3 id="raw-table"><a href="#raw-table" class="headerlink" title="raw table"></a>raw table</h3><p>iptables 防火墙是有状态的，这意味着数据包将根据其与先前数据包的关系进行评估。建立在 netfilter 框架之上的连接跟踪功能允许 iptables 将数据包视为正在进行的连接或会话的一部分，而不是视为离散的、不相关的数据包流。连接跟踪逻辑通常在数据包到达网络接口后立即应用。</p>
+<p>“raw”表的功能定义非常狭窄。 它的唯一目的是提供一种标记数据包的机制，以便选择退出连接跟踪。</p>
+<h3 id="Security-table"><a href="#Security-table" class="headerlink" title="Security table"></a>Security table</h3><p>安全表用于在数据包上设置内部SELinux安全上下文标记，这将影响SELinux或其他可以解释SELinux安全上下文的系统如何处理数据包。 这些标记可以应用于每个数据包或每个连接。</p>
+<h2 id="chain和table的关系"><a href="#chain和table的关系" class="headerlink" title="chain和table的关系"></a>chain和table的关系</h2>
+              
+            </div>
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/" class="category-chain-item">数据库</a>
+  
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>编写中，未定稿</div>
+      <div>https://nrbackback.github.io/2023/01/01/（正在编写中）netfilter/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>John Doe</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2023年1月1日</div>
+        </div>
+      
+      
+      <div class="license-meta-item">
+        <div>许可协议</div>
+        <div>
+          
+            
+            
+              <a target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+              <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                <i class="iconfont icon-by"></i>
+              </span>
+              </a>
+            
+          
+        </div>
+      </div>
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2023/01/01/%EF%BC%88%E6%AD%A3%E5%9C%A8%E7%BC%96%E5%86%99%E4%B8%AD%EF%BC%89tcpdump%E6%98%AF%E5%A6%82%E4%BD%95%E6%8A%93%E5%8C%85%E7%9A%84/" title="编写中，未定稿">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">编写中，未定稿</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2023/01/01/%EF%BC%88%E6%AD%A3%E5%9C%A8%E7%BC%96%E5%86%99%E4%B8%AD%EF%BC%89%E5%8C%97%E6%9E%81%E6%98%9FconfigMap%E6%9B%B4%E6%96%B0/" title="编写中，未定稿">
+                        <span class="hidden-mobile">编写中，未定稿</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.0/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      headingSelector : CONFIG.toc.headingSelector || 'h1,h2,h3,h4,h5,h6',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      collapseDepth   : CONFIG.toc.collapseDepth || 0,
+      scrollSmooth    : true,
+      headingsOffset  : -boardTop
+    });
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+  });
+</script>
+
+
+  <script>
+  (function() {
+    var enableLang = CONFIG.code_language.enable && CONFIG.code_language.default;
+    var enableCopy = CONFIG.copy_btn;
+    if (!enableLang && !enableCopy) {
+      return;
+    }
+
+    function getBgClass(ele) {
+      return Fluid.utils.getBackgroundLightness(ele) >= 0 ? 'code-widget-light' : 'code-widget-dark';
+    }
+
+    var copyTmpl = '';
+    copyTmpl += '<div class="code-widget">';
+    copyTmpl += 'LANG';
+    copyTmpl += '</div>';
+    jQuery('.markdown-body pre').each(function() {
+      var $pre = jQuery(this);
+      if ($pre.find('code.mermaid').length > 0) {
+        return;
+      }
+      if ($pre.find('span.line').length > 0) {
+        return;
+      }
+
+      var lang = '';
+
+      if (enableLang) {
+        lang = CONFIG.code_language.default;
+        if ($pre[0].children.length > 0 && $pre[0].children[0].classList.length >= 2 && $pre.children().hasClass('hljs')) {
+          lang = $pre[0].children[0].classList[1];
+        } else if ($pre[0].getAttribute('data-language')) {
+          lang = $pre[0].getAttribute('data-language');
+        } else if ($pre.parent().hasClass('sourceCode') && $pre[0].children.length > 0 && $pre[0].children[0].classList.length >= 2) {
+          lang = $pre[0].children[0].classList[1];
+          $pre.parent().addClass('code-wrapper');
+        } else if ($pre.parent().hasClass('markdown-body') && $pre[0].classList.length === 0) {
+          $pre.wrap('<div class="code-wrapper"></div>');
+        }
+        lang = lang.toUpperCase().replace('NONE', CONFIG.code_language.default);
+      }
+      $pre.append(copyTmpl.replace('LANG', lang).replace('code-widget">',
+        getBgClass($pre[0]) + (enableCopy ? ' code-widget copy-btn" data-clipboard-snippet><i class="iconfont icon-copy"></i>' : ' code-widget">')));
+
+      if (enableCopy) {
+        Fluid.utils.createScript('https://lib.baomitu.com/clipboard.js/2.0.10/clipboard.min.js', function() {
+          var clipboard = new window.ClipboardJS('.copy-btn', {
+            target: function(trigger) {
+              var nodes = trigger.parentNode.childNodes;
+              for (var i = 0; i < nodes.length; i++) {
+                if (nodes[i].tagName === 'CODE') {
+                  return nodes[i];
+                }
+              }
+            }
+          });
+          clipboard.on('success', function(e) {
+            e.clearSelection();
+            e.trigger.innerHTML = e.trigger.innerHTML.replace('icon-copy', 'icon-success');
+            setTimeout(function() {
+              e.trigger.innerHTML = e.trigger.innerHTML.replace('icon-success', 'icon-copy');
+            }, 2000);
+          });
+        });
+      }
+    });
+  })();
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>
