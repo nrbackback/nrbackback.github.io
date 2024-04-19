@@ -1,3 +1,14 @@
+---
+title: 编写中，未定稿
+draft: true  # 设置为草稿
+date: 2023-01-01 11:00:00
+categories:
+- 数据库
+
+---
+
+
+
 4.1更新
 
 背景：我写的一个程序flora-gopacket-service有时候通过top命令查看时，发现其CPU使用率非常高，需要定位该程序为什么会有如此高的CPU使用率。

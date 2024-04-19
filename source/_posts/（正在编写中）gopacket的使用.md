@@ -1,3 +1,14 @@
+---
+title: 编写中，未定稿
+draft: true  # 设置为草稿
+date: 2023-01-01 11:00:00
+categories:
+- 数据库
+
+---
+
+
+
 4.2更新
 
 gopacket的snapshot配置是干什么的
@@ -100,5 +111,4 @@ packetSource.DecodeOptions = gopacket.DecodeOptions{Lazy: true, NoCopy: true}
 通常情况下，在网络数据流中，数据包之间可能存在关联性，例如TCP连接中的数据包之间的序列关系。如果想要忽略这种关联性，将每个数据包视为独立的数据报进行解析，可以启用 `DecodeStreamsAsDatagrams` 选项。
 
 启用此选项的常见用例包括对UDP数据包进行解析，因为UDP是无连接的协议，每个UDP数据包都是独立的数据报。此外，对于一些特定的网络流量分析场景，如果你希望忽略连接之间的关联性，也可以考虑启用此选项。
-
 
