@@ -23,7 +23,7 @@ go get -u github.com/go-delve/delve/cmd/dlv
 dlv version
 ```
 
-使用：
+使用
 
 切换到待调试的go项目所在的目录：
 
@@ -446,7 +446,7 @@ func main() {
 	fmt.Println(r)
 }
 
-func `multi`(i, j int) int {
+func multi(i, j int) int {
 	r := i * j
 	return r
 }
@@ -620,3 +620,108 @@ break main
 
 print命令可以用p代替，表示缩写。
 
+#### 调试过程中执行函数调用
+
+这个步骤就是在执行过程中自定义参数调用函数，比如对于上面的例子程序：
+
+```shell
+dlv debug                                           
+Type 'help' for list of commands.
+(dlv) break main.main
+Breakpoint 1 set at 0x10b5c0a for main.main() ./main.go:7
+(dlv) break main.go:10
+Breakpoint 2 set at 0x10b5c2a for main.main() ./main.go:10
+(dlv) c
+> main.main() ./main.go:7 (hits goroutine(1):1 total:1) (PC: 0x10b5c0a)
+     2:
+     3:	import (
+     4:		"fmt"
+     5:	)
+     6:
+=>   7:	func main() {
+     8:		i := 10
+     9:		j := 20
+    10:		r := multi(i, j)
+    11:		fmt.Println(r)
+    12:	}
+(dlv) c
+> main.main() ./main.go:10 (hits goroutine(1):1 total:1) (PC: 0x10b5c2a)
+     5:	)
+     6:
+     7:	func main() {
+     8:		i := 10
+     9:		j := 20
+=>  10:		r := multi(i, j)
+    11:		fmt.Println(r)
+    12:	}
+    13:
+    14:	func multi(i, j int) int {
+    15:		r := i * j
+```
+
+此时到达了断点，然后按行执行下一步：
+
+```shell
+(dlv) n
+> main.main() ./main.go:11 (PC: 0x10b5c3e)
+     6:
+     7:	func main() {
+     8:		i := 10
+     9:		j := 20
+    10:		r := multi(i, j)
+=>  11:		fmt.Println(r)
+    12:	}
+    13:
+    14:	func multi(i, j int) int {
+    15:		r := i * j
+    16:		return r
+```
+
+程序里调用multi传递的参数值是10和20，如果在调试中我突然想测试一些极端情况，可以执行call命令，自定义参数调用函数，比如传递-1 -1给multi：
+
+````shell
+(dlv) call multi(-1,-1)
+> main.main() ./main.go:11 (PC: 0x10b5c3e)
+Values returned:
+	~r0: 1
+
+     6:
+     7:	func main() {
+     8:		i := 10
+     9:		j := 20
+    10:		r := multi(i, j)
+=>  11:		fmt.Println(r)
+    12:	}
+    13:
+    14:	func multi(i, j int) int {
+    15:		r := i * j
+    16:		return r
+````
+
+可以看到有值返回了，返回的值是1，也就是multi(-1,-1)的结果
+
+```shell
+Values returned:
+	~r0: 1
+```
+
+因为上一步程序调试停在了11行fmt.Println(r)，这里中途执行call不会影响上一步调试的停止，中途执行call之后程序还是停在了11行，下面把程序执行完毕：
+
+```shell
+(dlv) n
+200
+> main.main() ./main.go:12 (PC: 0x10b5cba)
+     7:	func main() {
+     8:		i := 10
+     9:		j := 20
+    10:		r := multi(i, j)
+    11:		fmt.Println(r)
+=>  12:	}
+    13:
+    14:	func multi(i, j int) int {
+    15:		r := i * j
+    16:		return r
+    17:	}
+(dlv) c
+Process 11724 has exited with status 0
+```

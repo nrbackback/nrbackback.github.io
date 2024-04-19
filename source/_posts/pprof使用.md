@@ -72,6 +72,99 @@ func main() {
 
 ![image-20230413103046287](/Users/rhettnina/Library/Application Support/typora-user-images/image-20230413103046287.png)
 
+查看 http://localhost:8080/debug/pprof/goroutine?debug=1，可以看到程序中有多少个goroutine
+
+> 比如查看http://localhost:8080/debug/pprof/goroutine?debug=1显示的结果如下：
+>
+> ```shell
+> goroutine profile: total 16
+> 1 @ 0x4007e9c 0x456c52c 0x456f2f0 0x456f259 0x4569e92 0x4569cde 0x44f1c2b 0x44f1e4a 0x4072f41
+> #	0x456c52b	github.com/google/gopacket/pcap._Cfunc_pcap_next_ex_escaping+0x4b	_cgo_gotypes.go:568
+> #	0x456f2ef	github.com/google/gopacket/pcap.(*Handle).pcapNextPacketEx.func1+0x6f	/Users/ahah/.gvm/pkgsets/go1.19/global/pkg/mod/github.com/google/gopacket@v1.1.19/pcap/pcap_unix.go:398
+> #	0x456f258	github.com/google/gopacket/pcap.(*Handle).pcapNextPacketEx+0x18		/Users/ahah/.gvm/pkgsets/go1.19/global/pkg/mod/github.com/google/gopacket@v1.1.19/pcap/pcap_unix.go:398
+> #	0x4569e91	github.com/google/gopacket/pcap.(*Handle).getNextBufPtrLocked+0x71	/Users/ahah/.gvm/pkgsets/go1.19/global/pkg/mod/github.com/google/gopacket@v1.1.19/pcap/pcap.go:312
+> #	0x4569cdd	github.com/google/gopacket/pcap.(*Handle).ReadPacketData+0x7d		/Users/ahah/.gvm/pkgsets/go1.19/global/pkg/mod/github.com/google/gopacket@v1.1.19/pcap/pcap.go:252
+> #	0x44f1c2a	github.com/google/gopacket.(*PacketSource).NextPacket+0x6a		/Users/ahah/.gvm/pkgsets/go1.19/global/pkg/mod/github.com/google/gopacket@v1.1.19/packet.go:801
+> #	0x44f1e49	github.com/google/gopacket.(*PacketSource).packetsToChannel+0x69	/Users/ahah/.gvm/pkgsets/go1.19/global/pkg/mod/github.com/google/gopacket@v1.1.19/packet.go:818
+> 
+> 1 @ 0x4034e96 0x406c2c5 0x486a9b5 0x486a7cd 0x486774b 0x49da2e5 0x49dae7e 0x43ab62f 0x43ad349 0x43aef0c 0x43aa107 0x4072f41
+> #	0x406c2c4	runtime/pprof.runtime_goroutineProfileWithLabels+0x24	/Users/ahah/.gvm/gos/go1.19/src/runtime/mprof.go:846
+> #	0x486a9b4	runtime/pprof.writeRuntimeProfile+0xb4			/Users/ahah/.gvm/gos/go1.19/src/runtime/pprof/pprof.go:723
+> #	0x486a7cc	runtime/pprof.writeGoroutine+0x4c			/Users/ahah/.gvm/gos/go1.19/src/runtime/pprof/pprof.go:683
+> #	0x486774a	runtime/pprof.(*Profile).WriteTo+0x14a			/Users/ahah/.gvm/gos/go1.19/src/runtime/pprof/pprof.go:330
+> #	0x49da2e4	net/http/pprof.handler.ServeHTTP+0x4a4			/Users/ahah/.gvm/gos/go1.19/src/net/http/pprof/pprof.go:253
+> #	0x49dae7d	net/http/pprof.Index+0x13d				/Users/ahah/.gvm/gos/go1.19/src/net/http/pprof/pprof.go:371
+> #	0x43ab62e	net/http.HandlerFunc.ServeHTTP+0x2e			/Users/ahah/.gvm/gos/go1.19/src/net/http/server.go:2109
+> #	0x43ad348	net/http.(*ServeMux).ServeHTTP+0x148			/Users/ahah/.gvm/gos/go1.19/src/net/http/server.go:2487
+> #	0x43aef0b	net/http.serverHandler.ServeHTTP+0x30b			/Users/ahah/.gvm/gos/go1.19/src/net/http/server.go:2947
+> #	0x43aa106	net/http.(*conn).serve+0x606				/Users/ahah/.gvm/gos/go1.19/src/net/http/server.go:1991
+> 
+> 1 @ 0x4039fde 0x406ee88 0x49dc999 0x4072f41
+> #	0x406ee87	os/signal.signal_recv+0x27	/Users/ahah/.gvm/gos/go1.19/src/runtime/sigqueue.go:149
+> #	0x49dc998	os/signal.loop+0x18		/Users/ahah/.gvm/gos/go1.19/src/os/signal/signal_unix.go:23
+> 
+> 1 @ 0x4040176 0x400ae9b 0x400a998 0x49b9dc6 0x49dd32e 0x4072f41
+> #	0x49b9dc5	sincerecloud.com/flora-gopacket-service/input.(*InputBox).Beat+0x65	/Users/ahah/MyLocalFile/aWork/code/flora-gopacket-service/input/input_box.go:26
+> #	0x49dd32d	main.Inputs.start.func1+0x6d						/Users/ahah/MyLocalFile/aWork/code/flora-gopacket-service/inputs.go:47
+> 
+> 1 @ 0x4040176 0x400ae9b 0x400a998 0x49dd874 0x403fdb2 0x4072f41
+> #	0x49dd873	main.main+0x333		/Users/ahah/MyLocalFile/aWork/code/flora-gopacket-service/main.go:80
+> #	0x403fdb1	runtime.main+0x211	/Users/ahah/.gvm/gos/go1.19/src/runtime/proc.go:250
+> 
+> 1 @ 0x4040176 0x400ae9b 0x400a998 0x49ddd94 0x4072f41
+> #	0x49ddd93	main.listenSignal+0xb3	/Users/ahah/MyLocalFile/aWork/code/flora-gopacket-service/main.go:89
+> 
+> 1 @ 0x4040176 0x400ae9b 0x400a9d8 0x44e7825 0x4072f41
+> #	0x44e7824	gopkg.in/natefinch/lumberjack%2ev2.(*Logger).millRun+0x44	/Users/ahah/.gvm/pkgsets/go1.19/global/pkg/mod/gopkg.in/natefinch/lumberjack.v2@v2.0.0/lumberjack.go:379
+> 
+> 1 @ 0x4040176 0x400ae9b 0x400a9d8 0x49dda25 0x4072f41
+> #	0x49dda24	main.main.func2+0x64	/Users/ahah/MyLocalFile/aWork/code/flora-gopacket-service/main.go:61
+> 
+> 1 @ 0x4040176 0x4038e17 0x406c6c9 0x40e67b2 0x40ebbb4 0x40ebba1 0x415f895 0x41790e8 0x417817d 0x43af545 0x43af09d 0x49dd4c5 0x49dd499 0x4072f41
+> #	0x406c6c8	internal/poll.runtime_pollWait+0x88		/Users/ahah/.gvm/gos/go1.19/src/runtime/netpoll.go:305
+> #	0x40e67b1	internal/poll.(*pollDesc).wait+0x31		/Users/ahah/.gvm/gos/go1.19/src/internal/poll/fd_poll_runtime.go:84
+> #	0x40ebbb3	internal/poll.(*pollDesc).waitRead+0x233	/Users/ahah/.gvm/gos/go1.19/src/internal/poll/fd_poll_runtime.go:89
+> #	0x40ebba0	internal/poll.(*FD).Accept+0x220		/Users/ahah/.gvm/gos/go1.19/src/internal/poll/fd_unix.go:614
+> #	0x415f894	net.(*netFD).accept+0x34			/Users/ahah/.gvm/gos/go1.19/src/net/fd_unix.go:172
+> #	0x41790e7	net.(*TCPListener).accept+0x27			/Users/ahah/.gvm/gos/go1.19/src/net/tcpsock_posix.go:142
+> #	0x417817c	net.(*TCPListener).Accept+0x3c			/Users/ahah/.gvm/gos/go1.19/src/net/tcpsock.go:288
+> #	0x43af544	net/http.(*Server).Serve+0x384			/Users/ahah/.gvm/gos/go1.19/src/net/http/server.go:3070
+> #	0x43af09c	net/http.(*Server).ListenAndServe+0x7c		/Users/ahah/.gvm/gos/go1.19/src/net/http/server.go:2999
+> #	0x49dd4c4	net/http.ListenAndServe+0x44			/Users/ahah/.gvm/gos/go1.19/src/net/http/server.go:3255
+> #	0x49dd498	main.main.func1+0x18				/Users/ahah/MyLocalFile/aWork/code/flora-gopacket-service/main.go:32
+> 
+> 1 @ 0x4040176 0x405039c 0x4494b65 0x4072f41
+> #	0x4494b64	github.com/spf13/viper.(*Viper).WatchConfig.func1.1+0x104	/Users/ahah/.gvm/pkgsets/go1.19/global/pkg/mod/github.com/spf13/viper@v1.15.0/viper.go:461
+> 
+> 1 @ 0x4040176 0x405039c 0x49b8cf8 0x4072f41
+> #	0x49b8cf7	sincerecloud.com/flora-gopacket-service/input.(*packetCapturer).captureByDevice+0x437	/Users/ahah/MyLocalFile/aWork/code/flora-gopacket-service/input/capturer.go:125
+> 
+> 1 @ 0x4040176 0x405161e 0x40515f5 0x406e725 0x408d9f2 0x4494a05 0x4072f41
+> #	0x406e724	sync.runtime_Semacquire+0x24				/Users/ahah/.gvm/gos/go1.19/src/runtime/sema.go:62
+> #	0x408d9f1	sync.(*WaitGroup).Wait+0x51				/Users/ahah/.gvm/gos/go1.19/src/sync/waitgroup.go:139
+> #	0x4494a04	github.com/spf13/viper.(*Viper).WatchConfig.func1+0x304	/Users/ahah/.gvm/pkgsets/go1.19/global/pkg/mod/github.com/spf13/viper@v1.15.0/viper.go:498
+> 
+> 1 @ 0x4040176 0x405161e 0x40515f5 0x406e725 0x408d9f2 0x49dd214 0x4072f41
+> #	0x406e724	sync.runtime_Semacquire+0x24	/Users/ahah/.gvm/gos/go1.19/src/runtime/sema.go:62
+> #	0x408d9f1	sync.(*WaitGroup).Wait+0x51	/Users/ahah/.gvm/gos/go1.19/src/sync/waitgroup.go:139
+> #	0x49dd213	main.Inputs.start+0x133		/Users/ahah/MyLocalFile/aWork/code/flora-gopacket-service/inputs.go:50
+> 
+> 1 @ 0x406f799 0x4118952 0x41187dc 0x411c1a5 0x411ae4d 0x4072f41
+> #	0x406f798	syscall.syscall6+0x98					/Users/ahah/.gvm/gos/go1.19/src/runtime/sys_darwin.go:44
+> #	0x4118951	golang.org/x/sys/unix.kevent+0x51			/Users/ahah/.gvm/pkgsets/go1.19/global/pkg/mod/golang.org/x/sys@v0.3.0/unix/zsyscall_darwin_amd64.go:276
+> #	0x41187db	golang.org/x/sys/unix.Kevent+0x3b			/Users/ahah/.gvm/pkgsets/go1.19/global/pkg/mod/golang.org/x/sys@v0.3.0/unix/syscall_bsd.go:399
+> #	0x411c1a4	github.com/fsnotify/fsnotify.(*Watcher).read+0x44	/Users/ahah/.gvm/pkgsets/go1.19/global/pkg/mod/github.com/fsnotify/fsnotify@v1.6.0/backend_kqueue.go:702
+> #	0x411ae4c	github.com/fsnotify/fsnotify.(*Watcher).readEvents+0xcc	/Users/ahah/.gvm/pkgsets/go1.19/global/pkg/mod/github.com/fsnotify/fsnotify@v1.6.0/backend_kqueue.go:487
+> 
+> 1 @ 0x4072f41
+> 
+> 1 @ 0x49bb1a5 0x49b9eb4 0x4072f41
+> #	0x49bb1a4	sincerecloud.com/flora-gopacket-service/input.(*packetInput).ReadOneEvent+0x84	/Users/ahah/MyLocalFile/aWork/code/flora-gopacket-service/input/packet_input.go:99
+> #	0x49b9eb3	sincerecloud.com/flora-gopacket-service/input.(*InputBox).beat+0x53		/Users/ahah/MyLocalFile/aWork/code/flora-gopacket-service/input/input_box.go:35
+> ```
+>
+> 那么表示该程序共有16个goroutine，每个goroutine都是以`1 @ `开头的。
+
 ### CPU profiling（CPU分析）
 
 `pprof` 的 CPU profiling 结果包括以下信息：
@@ -190,7 +283,7 @@ Showing top 10 nodes out of 12
 ```shell
 (pprof) list  main.main
 Total: 2.01s
-ROUTINE ======================== main.main in /Users/rhettnina/我的本地文件/a工作/code/work-assist/pprof/main.go
+ROUTINE ======================== main.main in /Users/ahah/我的本地文件/a工作/code/work-assist/pprof/main.go
          0      2.01s (flat, cum)   100% of Total
          .          .     37:
          .          .     38:   // 模拟一个耗时的函数

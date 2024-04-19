@@ -71,36 +71,3 @@ print("hello")
 LValue类型是一个interface，有很多类型实现了该interface，比如LNilType、LBool、LNumber、LString、LFunction、LUserData、LState、LTable、LChannel等等
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
