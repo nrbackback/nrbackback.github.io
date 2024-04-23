@@ -98,7 +98,7 @@ SNMPv3的PDU和v2c的好像一样，包括GetRequest PDU、GetNextRequest PDU、
 
 ### net-snmp
 
-> mac上默认可能无法访问本机的SNMP服务，需要进行如下配置：
+> mac上或者linux机器上可能默认可能无法访问本机的SNMP服务，需要进行如下配置：
 >
 > 修改` /etc/snmp/snmpd.conf`文件为以下内容：
 >
