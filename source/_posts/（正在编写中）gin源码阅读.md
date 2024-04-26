@@ -900,4 +900,3 @@ func (n *node) addRoute(path string, handlers HandlersChain)
 
 3.18 更新，这个函数也都看完了，但是没有怎么懂。我准备画gin的架构图，根据架构图来画一个系统之类的。
 
-
