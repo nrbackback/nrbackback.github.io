@@ -1,12 +1,10 @@
 ---
-title: 编写中，未定稿
-draft: true  # 设置为草稿
-date: 2023-01-01 11:00:00
+title: gopacket的TCP重组
+date: 2023-9-01 11:00:00
 categories:
-- 数据库
+- 网络
+- golang
 ---
-
-
 
 ## 背景
 
@@ -38,11 +36,13 @@ categories:
 
 可以看到其TCP payload都是ccc，**TCP重组就是选出了所有的需要重组的TCP分片，然后将这些TCP分片的TCP Payload组合得到完整的数据。**
 
-## 一些乱七八糟的补充
+## 测试HTTP请求TCP重组的注意事项
 
-> 客户端发送http请求时，客户端使用的端口是系统随机分配的，当我写了一个脚本，在这个脚本发送了2次http请求时，这2次http请求的端口使用的也是不同的，虽然在同一个脚本。
+### 客户端的随机端口
 
-**tcp包中如何知道应用层协议是什么**
+客户端发送http请求时，客户端使用的端口是系统随机分配的，当我写了一个脚本，在这个脚本发送了2次http请求时，这2次http请求的端口使用的也是不同的，虽然在同一个脚本。
+
+### tcp包中如何知道应用层协议是什么
 
 在TCP包中，我们无法直接知道应用层协议是什么，因为TCP只是一种传输层协议，它不关心上层的协议是什么。但是，在TCP包的数据部分，我们可以根据端口号来猜测上层协议的类型。因为在TCP连接建立时，客户端和服务器端会约定使用特定的端口号来传输数据，而这些端口号通常会对应着一种特定的应用层协议。比如，HTTP通常使用80端口，HTTPS通常使用443端口，SMTP通常使用25端口等等。因此，我们可以根据TCP包的目的端口号来猜测上层协议的类型。但是需要注意的是，这种方法并不完全准确，因为端口号并不是一成不变的，而且也有可能使用非标准的端口号。
 
@@ -50,27 +50,128 @@ categories:
 
 关于TCP 重组，可以先看官方给出的一个比较通俗易懂的[例子](https://github.com/google/gopacket/blob/master/examples/httpassembly/main.go)
 
+ ```go
+ package main
+ 
+ import (
+ 	"bufio"
+ 	"flag"
+ 	"io"
+ 	"log"
+ 	"net/http"
+ 	"time"
+ 
+ 	"github.com/google/gopacket"
+ 	"github.com/google/gopacket/examples/util"
+ 	"github.com/google/gopacket/layers"
+ 	"github.com/google/gopacket/pcap"
+ 	"github.com/google/gopacket/tcpassembly"
+ 	"github.com/google/gopacket/tcpassembly/tcpreader"
+ )
+ 
+ var iface = flag.String("i", "eth0", "Interface to get packets from")
+ var fname = flag.String("r", "", "Filename to read from, overrides -i")
+ var snaplen = flag.Int("s", 1600, "SnapLen for pcap packet capture")
+ var filter = flag.String("f", "tcp and dst port 80", "BPF filter for pcap")
+ var logAllPackets = flag.Bool("v", false, "Logs every packet in great detail")
+ 
+ // Build a simple HTTP request parser using tcpassembly.StreamFactory and tcpassembly.Stream interfaces
+ 
+ // httpStreamFactory implements tcpassembly.StreamFactory
+ type httpStreamFactory struct{}
+ 
+ // httpStream will handle the actual decoding of http requests.
+ type httpStream struct {
+ 	net, transport gopacket.Flow
+ 	r              tcpreader.ReaderStream
+ }
+ 
+ func (h *httpStreamFactory) New(net, transport gopacket.Flow) tcpassembly.Stream {
+ 	hstream := &httpStream{
+ 		net:       net,
+ 		transport: transport,
+ 		r:         tcpreader.NewReaderStream(),
+ 	}
+ 	go hstream.run() // Important... we must guarantee that data from the reader stream is read.
+ 
+ 	// ReaderStream implements tcpassembly.Stream, so we can return a pointer to it.
+ 	return &hstream.r
+ }
+ 
+ func (h *httpStream) run() {
+ 	buf := bufio.NewReader(&h.r)
+ 	for {
+ 		req, err := http.ReadRequest(buf)
+ 		if err == io.EOF {
+ 			// We must read until we see an EOF... very important!
+ 			return
+ 		} else if err != nil {
+ 			log.Println("Error reading stream", h.net, h.transport, ":", err)
+ 		} else {
+ 			bodyBytes := tcpreader.DiscardBytesToEOF(req.Body)
+ 			req.Body.Close()
+ 			log.Println("Received request from stream", h.net, h.transport, ":", req, "with", bodyBytes, "bytes in request body")
+ 		}
+ 	}
+ }
+ 
+ func main() {
+ 	defer util.Run()()
+ 	var handle *pcap.Handle
+ 	var err error
+ 
+ 	// Set up pcap packet capture
+ 	if *fname != "" {
+ 		log.Printf("Reading from pcap dump %q", *fname)
+ 		handle, err = pcap.OpenOffline(*fname)
+ 	} else {
+ 		log.Printf("Starting capture on interface %q", *iface)
+ 		handle, err = pcap.OpenLive(*iface, int32(*snaplen), true, pcap.BlockForever)
+ 	}
+ 	if err != nil {
+ 		log.Fatal(err)
+ 	}
+ 
+ 	if err := handle.SetBPFFilter(*filter); err != nil {
+ 		log.Fatal(err)
+ 	}
+ 
+ 	// Set up assembly
+ 	streamFactory := &httpStreamFactory{}
+ 	streamPool := tcpassembly.NewStreamPool(streamFactory)
+ 	assembler := tcpassembly.NewAssembler(streamPool)
+ 
+ 	log.Println("reading in packets")
+ 	// Read in packets, pass to assembler.
+ 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
+ 	packets := packetSource.Packets()
+ 	ticker := time.Tick(time.Minute)
+ 	for {
+ 		select {
+ 		case packet := <-packets:
+ 			// A nil packet indicates the end of a pcap file.
+ 			if packet == nil {
+ 				return
+ 			}
+ 			if *logAllPackets {
+ 				log.Println(packet)
+ 			}
+ 			if packet.NetworkLayer() == nil || packet.TransportLayer() == nil || packet.TransportLayer().LayerType() != layers.LayerTypeTCP {
+ 				log.Println("Unusable packet")
+ 				continue
+ 			}
+ 			tcp := packet.TransportLayer().(*layers.TCP)
+ 			assembler.AssembleWithTimestamp(packet.NetworkLayer().NetworkFlow(), tcp, packet.Metadata().Timestamp)
+ 
+ 		case <-ticker:
+ 			// Every minute, flush connections that haven't seen activity in the past 2 minutes.
+ 			assembler.FlushOlderThan(time.Now().Add(time.Minute * -2))
+ 		}
+ 	}
+ }
+ ```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## 其他
+## 代码解释
 
 ### FlushOlderThan
 
@@ -99,13 +200,7 @@ FlushWithOptions被调用后会查看该Stream的所有字节集合，如果[15-
 
 如果FlushWithOptions推送了所有字节（或者没有字节集合小于给定时间）并且连接自传入时间以来未收到任何字节，则连接将关闭。
 
-### 实现一些interface
-
-
-
-
-
-### 其他乱七八糟
+###Reassembly
 
 ```go
 type Reassembly struct {
