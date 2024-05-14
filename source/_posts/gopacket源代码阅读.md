@@ -6,11 +6,23 @@ categories:
 - 网络
 ---
 
-gopacket是用Golang开发的、Google出品的一个基于C语言的libpcap的网络数据包抓取和分析包。故gopacket使用到了C代码，编译时需要开启CGO。libpcap是一个网络数据包捕获框架，应用极其广泛，tcpdump、wireshark都是基于libpcap的。
+gopacket是用Golang开发的、Google出品的一个`PF_RING`和`AF_PACKET`和基于C语言的libpcap的网络数据包抓取和分析包。
+
+> 不同的选项会使用不同的底层，比如大部分时候是基于libpcap的，有时候是基于PF_RING的，有时候是基于AF_PACKET的。具体是基于什么的主要取决于代码是怎么写的。
+>
+> PF_RING和AF_PACKET都是网络套接字，
+
+> libpcap是C语言写的一个库，但是libpcap并不像前两者一样是套接字（socket）API的一部分。在linux系统或者IRIX系统，libpcap是基于套接字API实现的，比如Linux系统上是基于PF_PACKET套接字实现的。在`*BSD`, OS X, AIX, 和Solaris 11和之后的系统，是基于 BPF套接字实现的。在Solaris的早期版本和HP-UX系统，是基于STREAMS+DLPI。但是在`UN*Xes`系统中，因为系统没有提供用于包捕获的套接字，所以libpcap是通过其他机制实现的。
+>
+> 在windows上 Winpcap做的事情和libpcap一样。
+>
+> 原始socket是操作系统提供的API，可以由调用者自定义包的header，比如包的TCP header和IP header等等，然后发送包。
+
+通常最经常使用的是gopacket基于libpcap的抓包功能。下面也基于此介绍。因为是基于libpcap，故gopacket使用到了C代码，编译时需要开启CGO。libpcap是一个网络数据包捕获框架，应用极其广泛，tcpdump、wireshark都是基于libpcap的。
 
 因为在使用gopacket的过程中对其在libpcap的基础上做了哪些额外的功能和功能的实现比较好奇，故阅读了gopacket的源代码。其实也没有把源代码完全读完，只读了我自己比较感兴趣的部分，日后有时间可能会把其他部分都读完，读完了继续补充到本文。
 
-我阅读的部分主要是数据包抓取部分，数据包解码部分。下面介绍我读取的部分的内容。
+我阅读的部分主要是数据包抓取部分，数据包解码部分。还有一些这两部分之外的包，不过阅读得比较浅显没怎么看懂。下面介绍我读取的部分的内容。
 
 ## 数据包抓取
 
@@ -873,4 +885,236 @@ gopacket的以太网的解码操作也有对应的代码：
 以UDP为例，在找不到对应类型的情况下都会使用Payload作为协议类型：
 
 ![image-20240426112958224](../images/image-20240426112958224.png)
+
+## 其他包和文件阅读
+
+这部分写得比较随意，因为有不少因为源代码实在太难了，读不懂，就记录了我自己看懂的部分。可能比较随意。没什么有总结性和可参考性的内容，阅读时可以跳过。
+
+### examples/arpscan/arpscan.go
+
+序列化就是自定义数据各层，然后将各层数据放到*pcap.Handle类型的handle里，使用  handle.WritePacketData(buf.Bytes()) 来写入handle里
+
+序列化的调用参考这个函数：
+
+```go
+func writeARP(handle *pcap.Handle, iface *net.Interface, addr *net.IPNet) error {
+	// Set up all the layers' fields we can.
+	eth := layers.Ethernet{
+		SrcMAC:       iface.HardwareAddr,
+		DstMAC:       net.HardwareAddr{0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
+		EthernetType: layers.EthernetTypeARP,
+	}
+	arp := layers.ARP{
+		AddrType:          layers.LinkTypeEthernet,
+		Protocol:          layers.EthernetTypeIPv4,
+		HwAddressSize:     6,
+		ProtAddressSize:   4,
+		Operation:         layers.ARPRequest,
+		SourceHwAddress:   []byte(iface.HardwareAddr),
+		SourceProtAddress: []byte(addr.IP),
+		DstHwAddress:      []byte{0, 0, 0, 0, 0, 0},
+	}
+	// Set up buffer and options for serialization.
+	buf := gopacket.NewSerializeBuffer()
+	opts := gopacket.SerializeOptions{
+		FixLengths:       true,
+		ComputeChecksums: true,
+	}
+	// Send one packet for every address.
+	for _, ip := range ips(addr) {
+		arp.DstProtAddress = []byte(ip)
+		gopacket.SerializeLayers(buf, opts, &eth, &arp)
+		if err := handle.WritePacketData(buf.Bytes()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+```
+
+一些gopacket里定义的东西如下：
+
+```go
+// 设置缓冲区和序列化选项
+func NewSerializeBuffer() SerializeBuffer {
+	return &serializeBuffer{}
+}
+```
+
+```go
+// 序列化选项
+type SerializeOptions struct {
+	// FixLengths 确定在序列化期间，层是否应修复取决于有效负载的任何长度字段的值。
+	FixLengths bool
+	// ComputeChecksums 确定在序列化期间各层是否应根据其有效负载重新计算校验和
+	ComputeChecksums bool
+}
+```
+
+### examples/bidirectional/arpscan.go 
+
+bidirectional直接翻译为双向
+
+这块好像是关于tcpassembly的，是只针对TCP的重组
+
+streamPool := tcpassembly.NewStreamPool(streamFactory)
+
+tcpassembly.NewStreamPool需要传递的值是一个interface：
+
+```go
+// 程序集使用 StreamFactory 为每个新的 TCP 会话创建一个新的流
+type StreamFactory interface {
+	// 对于给定的TCP key，New函数应该返回一个新的流
+	New(netFlow, tcpFlow gopacket.Flow) Stream
+}
+
+// assembly逻辑的执行顺序为：
+// 1.通过StreamFactory.New创建流
+// 2. 调用Reassembled 0次或多次，按顺序传入重组后的TCP数据
+// 3. 调用 Re assemblyComplete 一次，之后该流将被程序集解除引用。
+type Stream interface {
+	// Reassembled被调用零次或多次。 assembly 保证在所有调用期间传入的所有 Reassemble 对象的集合按照它们在 TCP 流中出现的顺序呈现。
+	Reassembled([]Reassembly)
+	// 当程序集确定此流不再有数据时，将调用 ReassembleComplete，因为看到了 FIN 或 RST 数据包，或者因为流已超时，没有任何新数据包数据（由于调用 FlushOlderThan）。
+	ReassemblyComplete()
+}
+```
+
+### afpacket包
+
+TPacket struct，gpt说：TPacket 包提供了对 Linux TPACKETv3 捕获模式的支持。TPACKETv3 是一种高性能的数据包捕获模式，常用于高速网络流量分析和数据包处理。
+
+相关代码备份：
+
+```go
+func NewTPacket(opts ...interface{}) (h *TPacket, err error) 
+func (h *TPacket) ReadPacketData() (data []byte, ci gopacket.CaptureInfo, err error)
+```
+
+### bsdbpf包
+
+关于BPF的Options的设置
+
+```go
+func NewBPFSniffer(iface string, options *Options) (*BPFSniffer, error) 
+func (b *BPFSniffer) ReadPacketData() ([]byte, gopacket.CaptureInfo, error) 
+```
+
+### bytediff包
+
+这是关于输出格式的设置
+
+### defrag/lcmdefrag
+
+defrag直接翻译为碎片整理
+
+### dumpcommand
+
+这是一个示例程序
+
+### ip4defrag
+
+defrag直接翻译为碎片整理
+
+### layers
+
+定义了各层的协议，好像都实现了以下的方法：
+
+```go
+func (arp *ARP) LayerType() gopacket.LayerType { return LayerTypeARP }
+func (arp *ARP) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) error
+func (arp *ARP) NextLayerType() gopacket.LayerType 
+```
+
+### macs
+
+定义mac地址的一些常量
+
+### pcap
+
+关于通过调用C语言来抓网卡的数据包
+
+### pcapgo
+
+NgReader 结构体用于从 Netgraph 接口读取数据包。Netgraph 是 FreeBSD 和一些其他 BSD 系统中的一种通用内核级网络处理框架，它允许用户通过定义节点和连接来构建网络拓扑，并在节点之间传递数据。
+
+NgWriter struct
+
+```go
+// NgInterface holds all the information of a pcapng interface.
+type NgInterface struct
+```
+
+pcapng 是一种新的数据包捕获文件格式，它是 pcap 格式的一个扩展，提供了更多的功能和灵活性。pcapng 文件格式支持更多的元数据、多个数据包流、更好的时间戳精度等功能，使得它在网络流量分析和数据包捕获方面更加强大和灵活。
+
+read.go 文件：Reader 包装了一个底层 io.Reader 以读取 PCAP 格式的数据包数据。
+
+```go
+func (r *Reader) ReadPacketData() (data []byte, ci gopacket.CaptureInfo, err error)
+func (r *Reader) ZeroCopyReadPacketData() (data []byte, ci gopacket.CaptureInfo, err error) 
+```
+
+snoop.go:直接翻译为窥探，
+
+```go
+type SnoopReader struct
+func NewSnoopReader(r io.Reader) (*SnoopReader, error) 
+func (r *SnoopReader) ReadPacketData() (data []byte, ci gopacket.CaptureInfo, err error) 
+func (r *SnoopReader) ZeroCopyReadPacketData() (data []byte, ci gopacket.CaptureInfo, err error)
+```
+
+write.go：
+
+```go
+type Writer struct
+func NewWriter(w io.Writer) *Writer 
+func (w *Writer) WriteFileHeader(snaplen uint32, linktype layers.LinkType) error
+func (w *Writer) WritePacket(ci gopacket.CaptureInfo, data []byte) error 
+```
+
+```go
+//  f, _ := os.Create("/tmp/file.pcap")
+//  w := pcapgo.NewWriter(f)
+//  w.WriteFileHeader(65536, layers.LinkTypeEthernet)  // new file, must do this.
+//  w.WritePacket(gopacket.CaptureInfo{...}, data1)
+//  f.Close()
+```
+
+### pfring
+
+Ring struct
+
+Ring 结构体代表了一个环形缓冲区，用于存储数据包。环形缓冲区是一种循环队列的数据结构，它具有固定大小的缓冲区，可以循环存储和读取数据，当缓冲区的末尾被写满时，新的数据会从缓冲区的开头重新开始写入。
+
+### reassembly
+
+memory.go：StreamPool struct StreamPool 结构体代表了一个用于管理流的池。流在网络数据包分析中是一个重要的概念，它代表了两个端点之间的通信会话，可以根据一系列的数据包来重构出完整的通信流程。
+
+tcpassembly.go：直接翻译为TCP集会
+
+tcpcheck.go：通过一些选项对TCP包进行检验？？？？？？好像也没啥用？？？
+
+### routing
+
+```go
+// Router根据内核的路由表实现简单的IPv4/IPv6路由。 这个路由库的功能很少，在某些情况下实际上可能会错误地路由，但它应该在大多数情况下都可以工作。
+type Router interface {
+	Route(dst net.IP) (iface *net.Interface, gateway, preferredSrc net.IP, err error)
+	RouteWithSrc(input net.HardwareAddr, src, dst net.IP) (iface *net.Interface, gateway, preferredSrc net.IP, err error)
+}
+```
+
+这个包里有一个strcut实现了这个interface，可以通过`func New() (Router, error)`调用返回这个struct实现的interface
+
+### tcpassembly
+
+> gopacket里**Reassembly**和**Assembly**的介绍：
+>
+> Reassembly 主要用于处理分段传输或 IP 分片重组，将多个数据包片段组装成完整的数据包；
+>
+> 而 Assembly 则主要用于处理单个数据包的分解，将单个数据包分解成多个数据包片段。
+
+## 参考文章
+
+[Is libpcap implemented by socket API?](https://stackoverflow.com/questions/34085818/is-libpcap-implemented-by-socket-api)
 
