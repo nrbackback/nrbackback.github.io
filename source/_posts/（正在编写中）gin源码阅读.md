@@ -58,9 +58,7 @@ router目录存放了rest api的路由定义和rest api的rest部分，而且rou
 └── router.go
 ```
 
-TODO
 
-全局搜TODO tag，都是一些我没有看懂的逻辑
 
 已经读完了，笔记都记录在了项目里，没有记录在这个文档里面
 

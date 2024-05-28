@@ -4,7 +4,7 @@ date: 2023-02-21 18:00:00
 tags:
 - 原创
 categories:
-- go
+- golang
 ---
 
 ```go

@@ -2,7 +2,7 @@
 title: gorm打印SQL操作日志
 date: 2022-12-25 11:04:00
 categories:
-- go
+- golang
 ---
 ```
 func newModel(opts ...Option) (*defaultDataModel, error) {

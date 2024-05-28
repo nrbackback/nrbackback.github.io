@@ -4,7 +4,7 @@ date: 2023-02-06 18:00:00
 tags:
 - 原创
 categories:
-- go
+- golang
 ---
 如下，定义一个DecodeFunc类型，DecodeFunc是一个func([]byte, PacketBuilder)类型，可以通过d(data, p)调用
 

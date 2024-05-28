@@ -2,7 +2,7 @@
 title: 把swagger文档的访问放到路由中
 date: 2022-12-13 15:14:00
 categories:
-- go
+- golang
 ---
 
 **应该使用Raw函数而不是Exec函数，我尝试在连接clickhouse之后运行原始SQL语句，发现使用Exec会报错，但是用Raw的话就不会报错了，使用Exec报错似乎是在Scan调用的时候报错的**
